@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile &amp; Settings — Smart Blood Bank</title>
+  <link rel="stylesheet" href="css/styles.css?v=3" />
+  <style>
+    /* ── Profile page layout ─────────────────────────────── */
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      max-width: 1000px;
+      margin: 0 auto 40px;
+    }
+    @media (max-width: 720px) { .profile-grid { grid-template-columns: 1fr; } }
+
+    .profile-card {
+      background: #fff;
+      border: 1px solid #e8d5d9;
+      border-radius: 12px;
+      padding: 28px 32px;
+    }
+    .profile-card h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #7a1f2d;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #f0dde1;
+      padding-bottom: 10px;
+    }
+
+    /* full-width card span */
+    .profile-card--wide {
+      grid-column: 1 / -1;
+    }
+
+    /* form layout */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 540px) { .form-row { grid-template-columns: 1fr; } }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .form-group input,
+    .form-group select {
+      border: 1px solid #d5b5bb;
+      border-radius: 7px;
+      padding: 9px 12px;
+      font-size: 0.95rem;
+      color: #2d2d2d;
+      background: #fff;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus { outline: none; border-color: #7a1f2d; box-shadow: 0 0 0 3px rgba(122,31,45,0.09); }
+    .form-group input[readonly],
+    .form-group input[disabled] { background: #f7f0f1; color: #888; cursor: default; }
+
+    /* inline banners */
+    .form-banner { display: none; border-radius: 7px; padding: 10px 14px; font-size: 0.9rem; margin-bottom: 14px; font-weight: 500; }
+    .form-banner--success { background: #e6f9ed; color: #1b6a3a; border: 1px solid #a8e6be; }
+    .form-banner--error   { background: #fde8ea; color: #7a1f2d; border: 1px solid #f5c6cc; }
+    .form-banner--info    { background: #e8f0fe; color: #1a56db; border: 1px solid #bfcef8; }
+
+    /* threshold grid */
+    .threshold-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .threshold-item {
+      background: #fdf4f5;
+      border: 1px solid #e8d5d9;
+      border-radius: 9px;
+      padding: 14px 16px;
+    }
+    .threshold-item label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #7a1f2d;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .threshold-item input[type="number"] {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #d5b5bb;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    .threshold-hint {
+      font-size: 0.82rem;
+      color: #888;
+      margin-bottom: 20px;
+    }
+
+    /* avatar area */
+    .profile-avatar {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .avatar-circle {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, #7a1f2d, #c0392b);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      color: #fff;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .avatar-meta { flex: 1; }
+    .avatar-meta .user-name { font-size: 1.25rem; font-weight: 700; color: #1a1a2e; }
+    .avatar-meta .user-role { font-size: 0.85rem; color: #7a1f2d; font-weight: 600; margin-top: 2px; }
+    .avatar-meta .user-since { font-size: 0.8rem; color: #888; margin-top: 2px; }
+
+    .btn-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+    .page-header { max-width: 1000px; margin: 0 auto 24px; }
+    .page-header h1 { font-size: 1.75rem; font-weight: 800; color: #1a1a2e; }
+    .page-header p  { color: #666; font-size: 0.95rem; margin-top: 4px; }
+  </style>
+</head>
+<body data-page="profile">
+  <header class="site-header">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">🩸</span><span>Smart Blood Bank<small>Expiry-aware allocation</small></span></a>
+    <nav class="nav-links" data-nav></nav>
+  </header>
+
+  <main class="page-container">
+
+    <div class="page-header">
+      <h1>⚙️ Profile &amp; Settings</h1>
+      <p>Manage your account information, credentials, and system alert configurations.</p>
+    </div>
+
+    <!-- ── Avatar row ─────────────────────────────────────────────────── -->
+    <div class="profile-card profile-card--wide" style="max-width:1000px; margin:0 auto 28px;">
+      <div class="profile-avatar">
+        <div class="avatar-circle" id="avatarInitials">?</div>
+        <div class="avatar-meta">
+          <div class="user-name" id="avatarName">Loading…</div>
+          <div class="user-role" id="avatarRole">—</div>
+          <div class="user-since" id="avatarSince">Member since —</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-grid">
+
+      <div class="profile-card profile-card--wide" id="stockAlertsCard">
+        <h2>🔔 Current Inventory Alerts</h2>
+        <div id="stockAlerts" aria-live="polite" class="threshold-hint">Loading stock and expiry alerts…</div>
+      </div>
+
+      <!-- ── Profile info ───────────────────────────────────────────── -->
+      <div class="profile-card">
+        <h2>👤 Personal Information</h2>
+        <div id="profileBanner" class="form-banner"></div>
+        <form id="profileForm" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" id="profileName" placeholder="Your full name" required minlength="2" />
+            </div>
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="tel" id="profilePhone" placeholder="+92 300 0000000" maxlength="16" pattern="(\+92|0)3[0-9]{9}" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="profileEmail" readonly />
+            </div>
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="profileUsername" readonly />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Role</label>
+              <input type="text" id="profileRole" readonly />
+            </div>
+            <div class="form-group">
+              <label>Institution ID</label>
+              <input type="text" id="profileInstitution" placeholder="e.g. HOSP-001" readonly />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Blood Group</label>
+              <input type="text" id="profileBloodGroup" readonly />
+            </div>
+            <div class="form-group">
+              <label>Member Since</label>
+              <input type="text" id="profileSince" readonly />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ── Change password ────────────────────────────────────────── -->
+      <div class="profile-card" id="passwordChangeSection">
+        <h2>🔐 Change Password</h2>
+        <div id="forcedPasswordNotice" class="form-banner form-banner--info" role="status" hidden>
+          Your administrator reset your password. Enter the temporary password provided to you, then choose a new password to unlock your account.
+        </div>
+        <div id="passwordBanner" class="form-banner"></div>
+        <form id="passwordForm" novalidate>
+          <div class="form-group">
+            <label id="oldPasswordLabel" for="oldPassword">Current Password</label>
+            <input type="password" id="oldPassword" placeholder="Enter current password" required />
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="newPassword" placeholder="Strong password (8-64 characters)" required minlength="8" maxlength="64" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@$!%*?&#^()_+=.\-]).{8,64}" />
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="confirmPassword" placeholder="Repeat new password" required />
+          </div>
+          <p style="font-size:0.82rem;color:#888;margin-bottom:14px;">
+            After a successful password change, you will be signed out automatically for security.
+          </p>
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary">Update Password</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ── Admin: Alert Thresholds (hidden for non-admin) ────────── -->
+      <div class="profile-card profile-card--wide" id="thresholdsSection" style="display:none;">
+        <h2>🚨 Alert Thresholds <span style="font-size:0.8rem;font-weight:400;color:#888;">(Admin Only)</span></h2>
+        <div id="thresholdBanner" class="form-banner"></div>
+        <p class="threshold-hint">
+          Set low-stock limits for each blood group and the near-expiry warning window. A low-stock threshold of <strong>0</strong> disables that group’s alert.
+        </p>
+        <form id="thresholdsForm" novalidate>
+          <div class="threshold-grid">
+            <div class="threshold-item">
+              <label>A+ (A Positive)</label>
+              <input type="number" id="thresh_A_POSITIVE" min="0" max="100" value="5" />
+            </div>
+            <div class="threshold-item">
+              <label>A− (A Negative)</label>
+              <input type="number" id="thresh_A_NEGATIVE" min="0" max="100" value="3" />
+            </div>
+            <div class="threshold-item">
+              <label>B+ (B Positive)</label>
+              <input type="number" id="thresh_B_POSITIVE" min="0" max="100" value="5" />
+            </div>
+            <div class="threshold-item">
+              <label>B− (B Negative)</label>
+              <input type="number" id="thresh_B_NEGATIVE" min="0" max="100" value="3" />
+            </div>
+            <div class="threshold-item">
+              <label>O+ (O Positive)</label>
+              <input type="number" id="thresh_O_POSITIVE" min="0" max="100" value="8" />
+            </div>
+            <div class="threshold-item">
+              <label>O− (O Negative) <span style="color:#c0392b;">★ Universal</span></label>
+              <input type="number" id="thresh_O_NEGATIVE" min="0" max="100" value="5" />
+            </div>
+            <div class="threshold-item">
+              <label>AB+ (AB Positive)</label>
+              <input type="number" id="thresh_AB_POSITIVE" min="0" max="100" value="3" />
+            </div>
+            <div class="threshold-item">
+              <label>AB− (AB Negative)</label>
+              <input type="number" id="thresh_AB_NEGATIVE" min="0" max="100" value="2" />
+            </div>
+            <div class="threshold-item">
+              <label>Near-expiry warning window (days)</label>
+              <input type="number" id="thresh_NEAR_EXPIRY_DAYS" min="1" max="60" value="7" />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary">Save Thresholds</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="profile-card profile-card--wide" id="provisionUserSection" style="display:none;">
+        <h2>👥 Provision an Account <span style="font-size:0.8rem;font-weight:400;color:#888;">(Admin Only)</span></h2>
+        <p class="threshold-hint">Create staff and laboratory accounts here. Public registration creates hospital requester accounts only.</p>
+        <div id="provisionBanner" class="form-banner"></div>
+        <form id="provisionUserForm">
+          <div class="form-row">
+            <div class="form-group"><label>Full name</label><input id="newUserName" required minlength="3" maxlength="60" pattern="[A-Za-z][A-Za-z .'-]{2,59}" /></div>
+            <div class="form-group"><label>Username</label><input id="newUserUsername" required minlength="4" maxlength="20" pattern="[A-Za-z][A-Za-z0-9_]{3,19}" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Email</label><input id="newUserEmail" type="email" required /></div>
+            <div class="form-group"><label>Phone</label><input id="newUserPhone" type="tel" required maxlength="16" pattern="(\+92|0)3[0-9]{9}" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Institution ID</label><input id="newUserInstitution" required minlength="2" maxlength="12" pattern="[A-Za-z0-9-]{2,12}" /></div>
+            <div class="form-group"><label>Role</label><select id="newUserRole"><option value="STAFF">Blood bank staff</option><option value="LAB_TECHNICIAN">Laboratory technician</option><option value="HOSPITAL_REQUESTER">Hospital requester</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Blood group</label><select id="newUserBloodGroup"><option>O-</option><option>O+</option><option>A-</option><option>A+</option><option>B-</option><option>B+</option><option>AB-</option><option>AB+</option></select></div>
+            <div class="form-group"><label>Temporary password</label><input id="newUserPassword" type="password" minlength="8" maxlength="64" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@$!%*?&#^()_+=.\-]).{8,64}" required /></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" type="submit">Create Account</button></div>
+        </form>
+      </div>
+
+      <div class="profile-card profile-card--wide" id="promoteAdminSection" style="display:none;">
+        <h2>🔑 Promote a Registered Requester <span style="font-size:0.8rem;font-weight:400;color:#888;">(Admin Only)</span></h2>
+        <p class="threshold-hint">Promoting an account grants Admin access to your facility. The person must already have a Hospital Requester account and will need to sign in again.</p>
+        <div id="promoteAdminBanner" class="form-banner" role="status"></div>
+        <form id="promoteAdminForm">
+          <div class="form-group">
+            <label for="promoteAdminIdentity">Requester username or email</label>
+            <input id="promoteAdminIdentity" type="text" autocomplete="off" required />
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" type="submit">Promote to Admin</button></div>
+        </form>
+      </div>
+
+      <div class="profile-card profile-card--wide" id="adminPasswordResetSection" style="display:none;">
+        <h2>🔒 Reset a User Password <span style="font-size:0.8rem;font-weight:400;color:#888;">(Admin Only)</span></h2>
+        <p class="threshold-hint">Reset another account in your facility. A strong temporary password is generated and shown once. The user must replace it at their next sign-in.</p>
+        <div id="adminPasswordResetBanner" class="form-banner" role="status"></div>
+        <form id="adminPasswordResetForm">
+          <div class="form-group">
+            <label for="resetUserIdentity">User username or email</label>
+            <input id="resetUserIdentity" type="text" maxlength="254" autocomplete="off" required />
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" type="submit">Generate Temporary Password</button></div>
+        </form>
+        <div id="resetPasswordResult" class="form-banner form-banner--success" role="status" aria-live="polite" hidden>
+          <p id="resetPasswordMessage"></p>
+          <label class="form-group" for="temporaryPasswordValue">Temporary password (shown once)</label>
+          <input id="temporaryPasswordValue" type="text" readonly autocomplete="off" />
+          <p class="threshold-hint" style="margin:10px 0 0;">Give this password to the user privately. It is not included in the audit log.</p>
+        </div>
+      </div>
+
+    </div><!-- /.profile-grid -->
+  </main>
+
+  <footer class="site-footer">
+    <p>Smart Blood Bank Management System &nbsp;|&nbsp; &copy; <span data-year></span> Smart Blood Bank Inc. All rights reserved.</p>
+  </footer>
+
+  <script src="js/validation.js?v=3"></script>
+  <script src="js/auth.js?v=4"></script>
+  <script src="js/profile.js?v=5"></script>
+  <script>
+    // Populate avatar once session loads
+    document.addEventListener('DOMContentLoaded', () => {
+      const session = getSession();
+      if (!session) return;
+      const name = session.fullName || session.username || '?';
+      document.getElementById('avatarInitials').textContent = name.trim()[0].toUpperCase();
+      document.getElementById('avatarName').textContent = name;
+      document.getElementById('avatarRole').textContent = (session.role || '').replaceAll('_', ' ');
+    });
+    // Update avatar after profile loads
+    document.getElementById('profileForm')?.addEventListener('submit', () => {
+      const name = document.getElementById('profileName').value.trim();
+      if (name) {
+        document.getElementById('avatarInitials').textContent = name[0].toUpperCase();
+        document.getElementById('avatarName').textContent = name;
+      }
+    });
+    // Wire profileSince → avatar
+    setTimeout(() => {
+      const since = document.getElementById('profileSince')?.value;
+      if (since && since !== '—') {
+        document.getElementById('avatarSince').textContent = 'Member since ' + since;
+      }
+    }, 800);
+  </script>
+</body>
+</html>

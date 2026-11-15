@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/styles.css?v=3" />
   </head>
   <body data-page="register">
     <header class="site-header">
@@ -27,15 +27,13 @@
 
     <main class="auth-layout">
       <div class="side-copy">
-        <p class="kicker">FR-01 · Registration</p>
+        <p class="kicker">Institution Onboarding</p>
         <h1>Create a role-based account</h1>
         <p class="lede">
-          Register with username, email, password, institution, and role. This frontend demo stores
-          account data in this browser only; use fictional details during evaluation.
+          Register with your professional credentials, assigned institution ID, and organizational role.
         </p>
         <p class="note">
-          Roles follow the class diagram: Admin, Staff, Lab Technician, and Hospital Requester.
-          Donor blood group is captured so staff can later check donation eligibility.
+          Role-based access control enforces strict security boundaries between Administration, Blood Bank Staff, Laboratory Technicians, and Hospital Requesters.
         </p>
       </div>
 
@@ -68,20 +66,10 @@
         <div class="form-row">
           <div class="field">
             <label for="institutionId">Institution ID <span class="req">*</span></label>
-            <input id="institutionId" name="institutionId" type="text" maxlength="12" placeholder="FUSST-BB" required />
+            <input id="institutionId" name="institutionId" type="text" maxlength="12" placeholder="e.g. SBB-01" required />
             <div class="error" data-error-for="institutionId"></div>
           </div>
-          <div class="field">
-            <label for="role">Role <span class="req">*</span></label>
-            <select id="role" name="role" required>
-              <option value="">Select role</option>
-              <option value="ADMIN">Administrator</option>
-              <option value="STAFF">Blood bank staff</option>
-              <option value="LAB_TECHNICIAN">Laboratory technician</option>
-              <option value="HOSPITAL_REQUESTER">Hospital requester</option>
-            </select>
-            <div class="error" data-error-for="role"></div>
-          </div>
+          <div class="field"><label>Account role</label><input type="text" value="Hospital requester" readonly /><small>Blood bank staff accounts are provisioned by an administrator.</small></div>
         </div>
         <div class="field">
           <label for="bloodGroup">Blood group <span class="req">*</span></label>
@@ -101,7 +89,7 @@
         <div class="form-row">
           <div class="field">
             <label for="password">Password <span class="req">*</span></label>
-            <input id="password" name="password" type="password" autocomplete="new-password" required />
+            <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="64" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@$!%*?&#^()_+=.\-]).{8,64}" required />
             <p class="hint">8+ characters, mix of upper, lower, number, and a symbol.</p>
             <div class="error" data-error-for="password"></div>
           </div>
@@ -125,10 +113,10 @@
 
     <footer class="site-footer">
       <span>Smart Blood Bank Management System</span>
-      <span>&copy; <span data-year></span> SEN-311L</span>
+      <span>&copy; <span data-year></span> Smart Blood Bank Inc. All rights reserved.</span>
     </footer>
-    <script src="js/validation.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/pages.js"></script>
+    <script src="js/validation.js?v=2"></script>
+    <script src="js/auth.js?v=4"></script>
+    <script src="js/pages.js?v=3"></script>
   </body>
 </html>

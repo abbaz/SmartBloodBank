@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transfusion Analytics &amp; Reports | Smart Blood Bank</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css?v=4" />
+    <!-- Chart.js CDN for interactive visual analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  </head>
+  <body data-page="reports">
+    <header class="site-header">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C12 2 5 10.2 5 15.2A7 7 0 0 0 19 15.2C19 10.2 12 2 12 2Z" />
+          </svg>
+        </span>
+        <span>Smart Blood Bank<small>Expiry-aware allocation</small></span>
+      </a>
+      <nav class="nav-links" data-nav></nav>
+    </header>
+
+    <main class="page-container">
+      <div class="page-header-row">
+        <div>
+          <p class="kicker">Cold-Chain Performance &amp; Clinical Oversight</p>
+          <h1>Transfusion Analytics &amp; Wastage Intelligence</h1>
+          <p class="lede">
+            Real-time visibility into blood stock distribution across all 8 ABO/Rh groups, shelf-life wastage mitigation, urgency demand patterns, and monthly transfusion throughput.
+          </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-ghost" id="refreshReportsBtn">
+            ↻ Refresh Analytics
+          </button>
+        </div>
+      </div>
+
+      <section class="table-panel report-period-panel" aria-label="Report date range">
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <label for="reportRangePreset">Report period</label>
+            <select id="reportRangePreset" class="filter-select">
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="6m" selected>Last 6 months</option>
+              <option value="ytd">Year to date</option>
+              <option value="custom">Custom dates</option>
+            </select>
+          </div>
+          <div id="customReportDates" class="toolbar-group" hidden>
+            <label for="reportStartDate">From</label>
+            <input id="reportStartDate" type="date" />
+            <label for="reportEndDate">To</label>
+            <input id="reportEndDate" type="date" />
+          </div>
+          <div class="toolbar-group">
+            <button class="btn btn-primary" id="applyReportPeriodBtn" type="button">Apply period</button>
+            <span id="reportPeriodLabel" class="report-period-label" aria-live="polite"></span>
+          </div>
+        </div>
+        <p class="hint">Issued, expired, wastage, request demand, and monthly trends use this period. Stock and near-expiry cards show current inventory.</p>
+      </section>
+
+      <!-- Executive KPI Metrics -->
+      <div class="stat-pills">
+        <div class="stat-pill-card success">
+          <span class="num" id="kpiAvailableUnits">0</span>
+          <span class="label">Available Units Now</span>
+        </div>
+        <div class="stat-pill-card success">
+          <span class="num" id="kpiEfficiencyRate">100%</span>
+          <span class="label">Period Preservation Rate</span>
+        </div>
+        <div class="stat-pill-card warn">
+          <span class="num" id="kpiWastageRate">0.0%</span>
+          <span class="label">Period Expiry Wastage Rate</span>
+        </div>
+        <div class="stat-pill-card">
+          <span class="num" id="kpiFulfillmentRate">100%</span>
+          <span class="label">Period Request Fulfillment Rate</span>
+        </div>
+        <div class="stat-pill-card warn">
+          <span class="num" id="kpiNearExpiry">0</span>
+          <span class="label">Near Expiry (next 7 days)</span>
+        </div>
+      </div>
+
+      <!-- 2x2 Interactive Chart Grid -->
+      <div class="chart-grid">
+        <!-- Chart 1: Blood Group Breakdown -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3>Inventory by ABO/Rh Blood Group</h3>
+            <p class="hint">Active available units across all 8 standard red-cell groups.</p>
+          </div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="groupChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Monthly Throughput Flow -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3>Monthly Flow (Collections vs. Transfusions)</h3>
+            <p class="hint" id="monthlyTrendHint">Monthly collections, transfusions, and expirations within the selected period.</p>
+          </div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="monthlyChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 3: Unit Lifecycle Status -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3>Unit Cold-Chain Lifecycle Distribution</h3>
+            <p class="hint">Proportion of units in Available, Quarantined, Issued, and Expired states.</p>
+          </div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 4: Clinical Urgency Demand -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3>Hospital Requisition Urgency Mix</h3>
+            <p class="hint">Distribution of incoming clinical orders: Critical vs. Urgent vs. Routine.</p>
+          </div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="urgencyChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group-by-Group Wastage Breakdown Table -->
+      <div style="margin-top: 32px;">
+        <h2 style="font-family: var(--display); font-size: 1.6rem; color: var(--wine-dark); margin-bottom: 8px;">
+          Current Stock &amp; Period Conservation Breakdown
+        </h2>
+        <p class="lede" style="margin-bottom: 16px;">
+          Available and near-expiry counts are current snapshots; issued and expired counts use the selected report period.
+        </p>
+
+        <div class="table-panel">
+          <div class="table-responsive">
+            <table class="data-table" id="breakdownTable">
+              <thead>
+                <tr>
+                  <th>Blood Group</th>
+                  <th>Available Stock</th>
+                  <th>Total Handled</th>
+                  <th>Units Transfused</th>
+                  <th>Expired / Discarded</th>
+                  <th>Near Expiry</th>
+                  <th>Conservation Status</th>
+                </tr>
+              </thead>
+              <tbody id="breakdownTableBody">
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 24px; color: var(--muted);">
+                    Loading detailed stock breakdown…
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <span>Smart Blood Bank Management System</span>
+      <span>&copy; <span data-year></span> Smart Blood Bank Inc. All rights reserved.</span>
+    </footer>
+
+    <script src="js/validation.js?v=2"></script>
+    <script src="js/auth.js?v=4"></script>
+    <script src="js/reports.js?v=3"></script>
+  </body>
+</html>

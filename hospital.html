@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hospital Requisition Portal | Smart Blood Bank</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css?v=3" />
+  </head>
+  <body data-page="hospital">
+    <header class="site-header">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C12 2 5 10.2 5 15.2A7 7 0 0 0 19 15.2C19 10.2 12 2 12 2Z" />
+          </svg>
+        </span>
+        <span>Smart Blood Bank<small>Expiry-aware allocation</small></span>
+      </a>
+      <nav class="nav-links" data-nav></nav>
+    </header>
+
+    <main class="page-container">
+      <div class="page-header-row">
+        <div>
+          <p class="kicker">Hospital Clinical Portal</p>
+          <h1>Hospital Blood Requisition</h1>
+          <p class="lede">
+            Electronic requisition for emergency departments, operating theaters, and inpatient wards. Track real-time fulfillment status and download clinical transfusion slips.
+          </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="openRequisitionBtn">
+            + Order Blood Units
+          </button>
+          <a class="btn btn-ghost" href="contact.html">
+            📞 24/7 Transfusion Desk
+          </a>
+        </div>
+      </div>
+
+      <!-- Hospital Operational KPIs -->
+      <div class="stat-pills">
+        <div class="stat-pill-card warn">
+          <span class="num" id="hospPendingCount">0</span>
+          <span class="label">Orders in Allocation Queue</span>
+        </div>
+        <div class="stat-pill-card danger">
+          <span class="num" id="hospCriticalCount">0</span>
+          <span class="label">Critical Emergency Orders</span>
+        </div>
+        <div class="stat-pill-card success">
+          <span class="num" id="hospFulfilledCount">0</span>
+          <span class="label">Fulfilled Orders</span>
+        </div>
+        <div class="stat-pill-card">
+          <span class="num" id="hospTotalUnits">0</span>
+          <span class="label">Total Units Dispatched</span>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <select id="hospStatusFilter" class="filter-select">
+            <option value="">All Requisitions</option>
+            <option value="PENDING">Pending in Queue</option>
+            <option value="FULFILLED">Fulfilled &amp; Dispatched</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button class="btn btn-ghost btn-sm" id="refreshHospBtn">↻ Refresh Orders</button>
+        </div>
+      </div>
+
+      <!-- Orders Table -->
+      <div class="table-panel">
+        <div class="table-responsive">
+          <table class="data-table" id="hospOrdersTable">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Patient / Ward Ref</th>
+                <th>Target Group</th>
+                <th>Quantity</th>
+                <th>Clinical Urgency</th>
+                <th>Order Time</th>
+                <th>Status</th>
+                <th>Transfusion Dispatch</th>
+              </tr>
+            </thead>
+            <tbody id="hospOrdersTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 28px; color: var(--muted);">
+                  Loading hospital requisitions…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal: Place Blood Requisition -->
+    <div class="modal-overlay" id="requisitionModal" hidden>
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2>Order Clinical Blood Units</h2>
+            <p class="lede" style="font-size: 0.92rem; margin: 4px 0 0; color: var(--wine);">
+              Direct order to central blood bank priority queue
+            </p>
+          </div>
+          <button class="btn-close" type="button" data-close-modal>&times;</button>
+        </div>
+
+        <form id="requisitionForm" novalidate>
+          <div id="requisitionStatusMsg" class="form-status" role="status"></div>
+
+          <div class="field">
+            <label for="reqPatientRef">Patient Reference / Ward / Bed <span class="req">*</span></label>
+            <input type="text" id="reqPatientRef" maxlength="120" placeholder="e.g. Ward 4B · Bed 12 (MRN-9024)" required />
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="reqClinicalIndication">Clinical Indication <span class="req">*</span></label>
+              <select id="reqClinicalIndication" required>
+                <option value="Acute Hemorrhagic Shock">Acute Hemorrhagic Shock</option>
+                <option value="Elective Surgery">Elective Surgery</option>
+                <option value="Trauma Resuscitation">Trauma Resuscitation</option>
+                <option value="Obstetric Emergency">Obstetric Emergency</option>
+                <option value="Severe Anemia / Hematology">Severe Anemia / Hematology</option>
+                <option value="General Intensive Care">General Intensive Care</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="reqQuantityInput">Units Needed <span class="req">*</span></label>
+              <input type="number" id="reqQuantityInput" value="1" min="1" max="10" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="reqGroupSelect">Recipient Blood Group <span class="req">*</span></label>
+              <select id="reqGroupSelect" required>
+                <option value="">Select blood group</option>
+                <option>O-</option>
+                <option>O+</option>
+                <option>A-</option>
+                <option>A+</option>
+                <option>B-</option>
+                <option>B+</option>
+                <option>AB-</option>
+                <option>AB+</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="reqUrgencySelect">Clinical Urgency <span class="req">*</span></label>
+              <select id="reqUrgencySelect" required>
+                <option value="ROUTINE">Routine (Ward stock / Scheduled)</option>
+                <option value="URGENT">Urgent (Pre-Op / Rapid transfusion)</option>
+                <option value="CRITICAL">Critical Emergency (Immediate life-threat)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="checkbox">
+              <input type="checkbox" checked disabled />
+              <span>Transfusion safety protocol: Electronic allocation recommendations require final pre-administration cross-matching.</span>
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn btn-primary btn-full" type="submit" id="submitRequisitionBtn">
+              Submit Clinical Requisition
+            </button>
+            <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Official Transfusion Dispatch Slip -->
+    <div class="modal-overlay" id="slipModal" hidden>
+      <div class="modal-card large" style="background: #fff;">
+        <div class="modal-header" style="border-bottom: 2px solid var(--wine); padding-bottom: 14px;">
+          <div>
+            <span class="brand-mark" style="width: 32px; height: 32px; display: inline-grid; vertical-align: middle; margin-right: 8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C12 2 5 10.2 5 15.2A7 7 0 0 0 19 15.2C19 10.2 12 2 12 2Z" />
+              </svg>
+            </span>
+            <strong style="font-size: 1.15rem; color: var(--wine-dark); vertical-align: middle;">
+              SMART BLOOD BANK · CLINICAL TRANSFUSION DISPATCH SLIP
+            </strong>
+          </div>
+          <button class="btn-close" type="button" data-close-modal>&times;</button>
+        </div>
+
+        <div id="slipContent" style="padding: 10px 0;">
+          <!-- Loaded dynamically via js/hospital.js -->
+        </div>
+
+        <div style="border-top: 1px solid var(--line); padding-top: 16px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center;">
+          <small style="color: var(--muted);">Certified Digital Dispatch Record</small>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Print Slip</button>
+            <button class="btn btn-ghost" type="button" data-close-modal>Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <span>Smart Blood Bank Management System</span>
+      <span>&copy; <span data-year></span> Smart Blood Bank Inc. All rights reserved.</span>
+    </footer>
+
+    <script src="js/validation.js?v=2"></script>
+    <script src="js/auth.js?v=4"></script>
+    <script src="js/hospital.js?v=2"></script>
+  </body>
+</html>

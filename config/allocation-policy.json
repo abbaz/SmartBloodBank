@@ -1,0 +1,19 @@
+{
+  "compatibility": {
+    "O_NEGATIVE": ["O_NEGATIVE"],
+    "O_POSITIVE": ["O_POSITIVE", "O_NEGATIVE"],
+    "A_NEGATIVE": ["A_NEGATIVE", "O_NEGATIVE"],
+    "A_POSITIVE": ["A_POSITIVE", "A_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"],
+    "B_NEGATIVE": ["B_NEGATIVE", "O_NEGATIVE"],
+    "B_POSITIVE": ["B_POSITIVE", "B_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"],
+    "AB_NEGATIVE": ["AB_NEGATIVE", "A_NEGATIVE", "B_NEGATIVE", "O_NEGATIVE"],
+    "AB_POSITIVE": ["AB_POSITIVE", "AB_NEGATIVE", "A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"]
+  },
+  "substitute_match_ratio": 0.55,
+  "reference_shelf_life_days": 35,
+  "urgency_weights": {
+    "ROUTINE": {"match": 40, "expiry": 45, "scarcity": 75},
+    "URGENT": {"match": 60, "expiry": 35, "scarcity": 35},
+    "CRITICAL": {"match": 85, "expiry": 15, "scarcity": 0}
+  }
+}

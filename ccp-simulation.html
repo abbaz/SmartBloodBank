@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CCP Policy Simulation | Smart Blood Bank</title>
+  <link rel="stylesheet" href="css/styles.css?v=3" />
+  <style>
+    .sim-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:24px 0}
+    .sim-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+    .sim-card h3{margin:0 0 8px;color:var(--wine-dark)}
+    .sim-card p{color:var(--muted);font-size:.88rem;margin:0}
+    .sim-controls{display:flex;align-items:end;gap:14px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+    .sim-controls label{display:grid;gap:6px;font-weight:600}
+    .sim-controls input{padding:9px;border:1px solid var(--line);border-radius:8px;width:140px}
+    .sim-note{color:var(--muted);font-size:.9rem;margin:14px 0}
+    .sim-results{margin-top:24px}
+    .sim-results td:first-child{font-weight:700}
+    @media(max-width:600px){.sim-controls input{width:100%}}
+  </style>
+</head>
+<body data-page="simulation">
+  <header class="site-header">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">🩸</span><span>Smart Blood Bank<small>Expiry-aware allocation</small></span></a>
+    <nav class="nav-links" data-nav></nav>
+  </header>
+  <main class="page-container">
+    <div class="page-header-row">
+      <div>
+        <p class="kicker">Complex Computing Problem · Policy Evaluation</p>
+        <h1>Allocation Policy Simulation</h1>
+        <p class="lede">Run FIFO, FEFO, and weighted-priority policies over the same reproducible 60-day donation and request scenario. This is a decision-support benchmark, not a clinical recommendation.</p>
+      </div>
+    </div>
+    <form class="sim-controls" id="simulationForm">
+      <label>Donations<input id="unitCount" type="number" min="50" max="2000" step="50" value="500" /></label>
+      <label>Clinical requests<input id="requestCount" type="number" min="25" max="1000" step="25" value="300" /></label>
+      <label>Scenario seed<input id="scenarioSeed" type="number" min="1" max="999999" value="13724" /></label>
+      <button class="btn btn-primary" type="submit">Run Benchmark</button>
+    </form>
+    <p class="sim-note" id="simulationStatus" role="status">Ready. The same generated stock, requests, and urgency mix will be used for each policy.</p>
+    <div class="table-panel sim-results">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead><tr><th>Policy</th><th>Requests served</th><th>Expired unused units</th><th>Requests fully served with exact match</th><th>O− issued to non-O−</th><th>Compatibility violations</th><th>Decision time / request</th></tr></thead>
+          <tbody id="simulationResults"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Run the benchmark to compare policies.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="sim-grid">
+      <div class="sim-card"><h3>FIFO</h3><p>Issue the earliest collected compatible unit first.</p></div>
+      <div class="sim-card"><h3>FEFO</h3><p>Issue the compatible unit with the nearest expiry first.</p></div>
+      <div class="sim-card"><h3>Weighted priority</h3><p>Balance match quality, expiry proximity, and O− preservation. Critical requests place more weight on match quality.</p></div>
+    </div>
+    <p class="sim-note">Decision time is measured locally and depends on the computer and scenario size. Compatibility violations are blocked by the candidate filter. Scenario results are simulated data; they do not describe this installation’s actual transfusions.</p>
+  </main>
+  <footer class="site-footer"><span>Smart Blood Bank Management System</span><span>Policy benchmarking · reproducible scenario</span></footer>
+  <script src="js/auth.js?v=4"></script>
+  <script src="js/ccp-simulation.js?v=1"></script>
+</body>
+</html>

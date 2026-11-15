@@ -1,23 +1,87 @@
 # Smart Blood Bank Management System
 
-Four-page frontend prototype for the SEN-311L semester project, based on the proposal and UML diagrams. It presents expiry-aware allocation and blood-group compatibility matching; inventory and allocation workflows are not connected to a backend yet.
+An enterprise web application for healthcare transfusion logistics, cold-chain inventory tracking, expiry-aware allocation, and blood-group compatibility matching backed by PHP and MySQL.
 
-## Pages
+## Pages & Endpoints
 
-- `index.html` — Home
-- `register.html` — Sign up with role, institution, and password rules
-- `login.html` — Sign in
-- `contact.html` — Contact form
+### Frontend Pages
+- `index.html` — Home dashboard with red-cell compatibility table and live MySQL inventory/request stats.
+- `register.html` — Role-based user registration connected to MySQL (`users` table).
+- `login.html` — Sign-in connected to MySQL with secure password verification.
+- `contact.html` — Support inquiry form storing messages in MySQL (`contact_messages` table).
 
-Open `index.html` in Chrome, Firefox, or Edge. A local server is optional.
+### Backend API (PHP + MySQL)
+- `api/db.php` — Database connection handling (`smart_blood_bank` / `smart blood bank` on WAMP).
+- `api/register.php` — Validates inputs, hashes password with bcrypt, checks duplicates, and inserts into `users`.
+- `api/login.php` — Authenticates user identity and password against MySQL, initiates session.
+- `api/contact.php` — Saves contact inquiries to `contact_messages`.
+- `api/session.php` — Returns current logged-in user session.
+- `api/logout.php` — Destroys session.
+- `api/stats.php` — Queries inventory counts and pending requests from MySQL.
+- `api/test_db.php` — Diagnostic test verifying MySQL connection and table row counts.
+- `config/allocation-policy.json` — Shared compatibility and weighted-allocation policy used by the live engine and CCP simulation.
+- `demo-seed.sql` — Repeatable synthetic donors, units, and hospital requests for WAMP demos.
 
-Demo login: `staff@bloodbank.pk` / `Staff@123`
+## How to Run on WAMP
 
-Accounts and contact tickets are stored in this browser (`localStorage`) for this prototype. The demo password digest is not production-grade authentication: there is no server, secure password hashing, database, authorization enforcement, or institution-level data isolation. Do not use real personal, donor, or patient information.
+1. **Start WAMP**: Ensure the WampServer icon in your taskbar is green (Apache and MySQL running).
+2. **Database**: Your database `smart_blood_bank` (or `smart blood bank`) in phpMyAdmin is ready. The schema is also available in `database.sql`.
+3. **Open the Site in Browser**:
+   Navigate to:
+   ```
+   http://localhost/SmartBloodBank/
+   ```
+   *(Do not open files via `file:///C:/wamp64/...` directly, because browsers cannot execute PHP without the Apache server).*
 
-## Included
+4. **Verify Database Connection** (sign in as an administrator first; this diagnostic is access-restricted):
+   Open:
+   ```
+   http://localhost/SmartBloodBank/api/test_db.php
+   ```
+   You should see a JSON response with status `"OK"` and table counts. The diagnostic does not return user records.
 
-- Home page describing the project, roles, red-cell compatibility, and safety boundaries. The inventory figures are illustrative, not live data.
-- Registration and sign-in forms with field-level validation and a demo staff account.
-- Contact form with field-level validation and a local-only submission confirmation.
-- Responsive burgundy, cream, and sage styling.
+5. **Enable atomic writes**: after taking a database backup, import `database-transactional-engines.sql` into the active application database. It converts the core tables to InnoDB so inventory, request, allocation, and audit writes can commit or roll back together. Database-backed API requests return service unavailable until all required tables are transactional.
+
+6. **Protect audit history**: import `audit-immutability.sql` once. It installs triggers that reject UPDATE and DELETE against audit rows. Keep the MySQL administrator account private; a database owner can remove triggers.
+
+7. **Use the live single-bank facility ID**: new hospital requests default to facility ID `1`. Set the optional WAMP environment variable `SBB_DEFAULT_FACILITY_ID` if this installation uses another numeric facility ID. Existing requests are migrated to facility `1` unless assigned manually.
+
+## Account Roles
+
+Public registration always creates a Hospital Requester. Admins can create Staff, Laboratory Technician, and Hospital Requester accounts from **Profile & Settings → Provision an Account**. The same page has **Promote a Registered Requester**: an Admin can promote an existing requester by username or email. Promotion is restricted to the Admin's facility, audited, and takes effect for the promoted user after they sign in again. Admin accounts cannot be self-registered.
+
+Admins can also use **Profile & Settings → Reset a User Password** to generate a one-time temporary password for another account in their facility. The temporary password is displayed once, is not stored in the audit log, and must be replaced at the user's next sign-in before protected APIs are available. Give it to the user privately. Existing databases automatically add the `must_change_password` flag; `database-admin-password-reset.sql` is also provided for manual migrations.
+
+The Analytics page offers 30-day, 90-day, six-month, year-to-date, and custom date ranges. Period metrics use transaction date for issuances, unit expiry date for wastage, and request creation date for demand. Available stock and near-expiry counts remain current snapshots.
+
+## Database Backups
+
+Take a backup before importing seed data, schema migrations, or preparing a presentation. In PowerShell, adjust the database name and port to the one shown in phpMyAdmin:
+
+```powershell
+$backupDir = 'C:\wamp64\www\SmartBloodBank\backups'
+New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
+$backupFile = Join-Path $backupDir ("smart-blood-bank-{0}.sql" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+& 'C:\wamp64\bin\mysql\mysql8.4.7\bin\mysqldump.exe' --host=127.0.0.1 --port=3306 --user=root --result-file=$backupFile 'smart blood bank'
+if ($LASTEXITCODE -ne 0) { throw 'Database backup failed.' }
+```
+
+Verify the file exists and has a nonzero size. For a restore rehearsal, import the dump into a separate test database in phpMyAdmin; do not restore over the live database as a routine check.
+
+## Validation
+
+Run the shared allocation-policy check with Node.js:
+
+```powershell
+node tests/allocation-policy.test.js
+```
+
+Then follow [the release validation checklist](docs/validation-checklist.md) for role/privacy checks, all blood-group cases, cross-browser review, timing, and backup restoration. These manual WAMP/browser checks are not covered by the Node script.
+
+For WAMP integration checks on Windows, run `tests/wamp-integration.ps1` from PowerShell. It backs up the configured source database to a temporary dump, restores an isolated copy, applies the transactional-engine migration to that copy, and exercises synthetic registration, two-facility isolation, partial fulfillment, and audit-failure rollback cases. It removes the temporary database and files when it finishes.
+
+## Demo Login
+
+- **Username / Email**: `staff@bloodbank.pk` or `staffdemo`
+- **Password**: `Staff@123`
+- **Role**: Blood bank staff (`STAFF`)

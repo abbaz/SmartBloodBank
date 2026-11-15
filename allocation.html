@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Allocation Engine | Smart Blood Bank</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css?v=3" />
+  </head>
+  <body data-page="allocation">
+    <header class="site-header">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C12 2 5 10.2 5 15.2A7 7 0 0 0 19 15.2C19 10.2 12 2 12 2Z" />
+          </svg>
+        </span>
+        <span>Smart Blood Bank<small>Expiry-aware allocation</small></span>
+      </a>
+      <nav class="nav-links" data-nav></nav>
+    </header>
+
+    <main class="page-container">
+      <div class="page-header-row">
+        <div>
+          <p class="kicker">Clinical Decision Support</p>
+          <h1>Smart Allocation Engine</h1>
+          <p class="lede">
+            Automated ranking of compatible blood units balancing biological exactness, FEFO (First-Expiry-First-Out) shelf-life urgency, clinical priority, and universal O- preservation.
+          </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="openNewRequestBtn">
+            + Place Clinical Request
+          </button>
+          <button class="btn btn-ghost" id="seedDemoStockBtn" title="Load sample blood units for pitch demonstrations">
+            ⚡ Seed Demo Stock
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div class="stat-pills">
+        <div class="stat-pill-card danger">
+          <span class="num" id="criticalCount">0</span>
+          <span class="label">Critical Emergency Orders</span>
+        </div>
+        <div class="stat-pill-card warn">
+          <span class="num" id="urgentCount">0</span>
+          <span class="label">Urgent Requests</span>
+        </div>
+        <div class="stat-pill-card">
+          <span class="num" id="routineCount">0</span>
+          <span class="label">Routine Queue</span>
+        </div>
+        <div class="stat-pill-card success">
+          <span class="num" id="fulfilledCount">0</span>
+          <span class="label">Fulfilled Transfusions</span>
+        </div>
+      </div>
+
+      <!-- Toolbar: Queue Filter -->
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <select id="queueStatusFilter" class="filter-select">
+            <option value="PENDING">Active Pending Queue</option>
+            <option value="FULFILLED">Fulfilled History</option>
+            <option value="">All Orders</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button class="btn btn-ghost btn-sm" id="refreshQueueBtn">↻ Refresh Queue</button>
+        </div>
+      </div>
+
+      <!-- Requests Queue Table -->
+      <div class="table-panel">
+        <div class="table-responsive">
+          <table class="data-table" id="requestsTable">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Requester</th>
+                <th>Target Group</th>
+                <th>Quantity</th>
+                <th>Clinical Urgency</th>
+                <th>Order Date</th>
+                <th>Status</th>
+                <th>Decision Support</th>
+              </tr>
+            </thead>
+            <tbody id="requestsTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 28px; color: var(--muted);">
+                  Loading active clinical orders…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal: Intelligent Allocation Engine Results (The Decision Support Screen) -->
+    <div class="modal-overlay" id="allocationModal" hidden>
+      <div class="modal-card large">
+        <div class="modal-header">
+          <div>
+            <h2>Intelligent Allocation Recommendations</h2>
+            <p id="allocationModalSubtitle" class="lede" style="font-size: 0.92rem; margin: 4px 0 0; color: var(--wine);">
+              Evaluating candidate units…
+            </p>
+          </div>
+          <button class="btn-close" type="button" data-close-modal>&times;</button>
+        </div>
+
+        <div id="allocationStatusMsg" class="form-status" role="status"></div>
+
+        <!-- Algorithm Parameters Overview -->
+        <div style="background: #fcf6f2; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 0.88rem;">
+          <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <span><strong>Requested:</strong> <span id="summaryGroup" class="blood-badge">A+</span></span>
+            <span><strong>Units Needed:</strong> <span id="summaryQty" style="font-weight:700;">1</span></span>
+            <span><strong>Urgency Level:</strong> <span id="summaryUrgency" class="urgency-badge">ROUTINE</span></span>
+            <span><strong>Scoring Policy:</strong> <span style="color:var(--wine); font-weight:600;">Weighted Multi-Factor (Match + FEFO - O- Scarcity)</span></span>
+          </div>
+        </div>
+
+        <!-- Candidate Units Ranked Container -->
+        <div style="max-height: 380px; overflow-y: auto; padding-right: 4px;" id="recommendationsContainer">
+          <!-- Populated dynamically via js/allocation.js -->
+        </div>
+
+        <!-- Allocation Commit Bar -->
+        <div style="border-top: 1px solid var(--line); margin-top: 18px; padding-top: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div style="font-size: 0.88rem; color: var(--muted);">
+            <span id="selectedUnitsCount" style="font-weight: 700; color: var(--ink);">0</span> unit(s) selected for atomic issue.
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-primary" id="confirmAllocationBtn" disabled>
+              ✓ Confirm Allocation &amp; Issue
+            </button>
+            <button class="btn btn-ghost" type="button" data-close-modal>Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Place New Clinical Request -->
+    <div class="modal-overlay" id="newRequestModal" hidden>
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>Place Hospital Blood Request</h2>
+          <button class="btn-close" type="button" data-close-modal>&times;</button>
+        </div>
+        <form id="newRequestForm" novalidate>
+          <div id="newRequestStatus" class="form-status" role="status"></div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="reqBloodGroup">Recipient Blood Group <span class="req">*</span></label>
+              <select id="reqBloodGroup" name="blood_group" required>
+                <option value="">Select blood group</option>
+                <option>O-</option>
+                <option>O+</option>
+                <option>A-</option>
+                <option>A+</option>
+                <option>B-</option>
+                <option>B+</option>
+                <option>AB-</option>
+                <option>AB+</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="reqQuantity">Quantity (Units) <span class="req">*</span></label>
+              <input type="number" id="reqQuantity" name="quantity" value="1" min="1" max="10" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="reqUrgency">Clinical Urgency Priority <span class="req">*</span></label>
+            <select id="reqUrgency" name="urgency" required>
+              <option value="ROUTINE">Routine (Prioritizes shelf-life expiry &amp; preserves O- stock)</option>
+              <option value="URGENT">Urgent (Balanced match quality &amp; availability)</option>
+              <option value="CRITICAL">Critical Emergency (Immediate life-safety; relaxes scarcity penalties)</option>
+            </select>
+            <p class="hint">The allocation engine weights candidate units dynamically based on urgency.</p>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn btn-primary btn-full" type="submit" id="submitRequestBtn">Submit Clinical Request</button>
+            <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <span>Smart Blood Bank Management System</span>
+      <span>&copy; <span data-year></span> Smart Blood Bank Inc. All rights reserved.</span>
+    </footer>
+
+    <script src="js/validation.js?v=2"></script>
+    <script src="js/auth.js?v=4"></script>
+    <script src="js/allocation.js?v=2"></script>
+  </body>
+</html>

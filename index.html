@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/styles.css?v=3" />
   </head>
   <body data-page="home">
     <header class="site-header">
@@ -28,11 +28,11 @@
     <main>
       <section class="hero" id="guestHero">
         <div>
-          <p class="kicker">SEN-311L · FUSST</p>
+          <p class="kicker">Next-Gen Blood Transfusion Logistics</p>
           <h1>Safer issue. Less wastage. Faster decisions.</h1>
           <p class="lede">
-            A blood-bank web system that recommends compatible units using blood-group matching,
-            expiry, request urgency, and O-negative scarcity — while staff keep the final say.
+            A specialized healthcare platform that optimizes blood unit allocation using intelligent compatibility matching,
+            cold-chain shelf-life tracking, clinical urgency prioritization, and scarce universal-donor preservation.
           </p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="register.html">Create an account</a>
@@ -40,39 +40,58 @@
           </div>
         </div>
         <aside class="hero-card">
-          <p class="kicker">Example inventory snapshot</p>
-          <div class="stat-grid">
-            <div class="stat"><b>86</b><span>Units in stock</span></div>
-            <div class="stat"><b>7</b><span>Near expiry</span></div>
-            <div class="stat"><b>4</b><span>Pending requests</span></div>
-            <div class="stat"><b>0</b><span>Compatibility violations</span></div>
-          </div>
-          <p class="hint">Illustrative figures only; live inventory is not connected in this frontend prototype.</p>
+          <p class="kicker">Protected live inventory</p>
+          <h2>Sign in to view current availability</h2>
+          <p class="hint">Stock levels, expiry alerts, and clinical requests are visible only to authorized users.</p>
         </aside>
       </section>
 
       <section class="hero dashboard" id="signedInDash" hidden>
         <div>
-          <p class="kicker">Signed in</p>
-          <h1>Welcome, <span id="welcomeName">staff</span></h1>
+          <p class="kicker">Staff Workspace</p>
+          <h1>Welcome, <span id="welcomeName">Staff</span></h1>
           <p class="lede">
-            Role: <strong id="welcomeRole">STAFF</strong>. You can review stock, follow alerts, and
-            open contact for lab or administration support. Allocation recommendations always require
-            human confirmation.
+            Role: <strong id="welcomeRole">STAFF</strong>. You can record donors, log fresh donations, monitor quarantined and available stock, and check expiry countdowns.
           </p>
+          <div class="hero-actions" style="margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap;">
+            <a class="btn btn-primary" href="allocation.html">⚡ Smart Allocation Engine</a>
+            <a class="btn btn-ghost" href="reports.html">📊 Analytics &amp; Wastage</a>
+            <a class="btn btn-ghost" href="audit.html">📋 Audit Trail</a>
+            <a class="btn btn-ghost" href="lab.html">🔬 Lab Clearance</a>
+            <a class="btn btn-ghost" href="donors.html">🩸 Manage Donors</a>
+            <a class="btn btn-ghost" href="inventory.html">📦 Blood Inventory</a>
+          </div>
         </div>
         <aside class="hero-card">
-          <p class="kicker">Your session</p>
-          <p class="lede" style="margin: 0">
-            Expired or incompatible units can never be issued. Laboratory cross-matching remains
-            mandatory.
-          </p>
+          <p class="kicker">Live Blood Bank Status</p>
+          <div class="stat-grid">
+            <div class="stat"><b id="dashUnits">0</b><span>Available stock</span></div>
+            <div class="stat"><b id="dashNearExpiry" style="color:#b54708;">0</b><span>Near expiry (&le;7d)</span></div>
+            <div class="stat"><b id="dashPending">0</b><span>Pending requests</span></div>
+            <div class="stat"><b id="dashDonors">0</b><span>Total donors</span></div>
+          </div>
+          <p class="hint">Live data loaded from MySQL database.</p>
         </aside>
+      </section>
+
+      <section class="section" id="dashStockSection" hidden>
+        <h2>Live Stock by Blood Group</h2>
+        <p class="lede">Available, lab-cleared units. Expiring units are listed below to support timely allocation.</p>
+        <div class="blood-grid" id="dashBloodGroups" aria-live="polite">
+          <div class="blood-cell">Loading stock…</div>
+        </div>
+        <h2 style="font-size:1.6rem">Units Near Expiry</h2>
+        <p class="lede" id="nearExpiryWindow">Loading the configured warning window…</p>
+        <div class="table-panel"><div class="table-responsive">
+          <table class="data-table"><thead><tr><th>Unit</th><th>Blood group</th><th>Expiry date</th></tr></thead>
+            <tbody id="dashNearExpiryUnits"><tr><td colspan="3">Loading near-expiry units…</td></tr></tbody>
+          </table>
+        </div></div>
       </section>
 
       <section class="section">
         <h2>Core capabilities</h2>
-        <p class="lede">Built around the proposal modules: authentication, inventory, requests, allocation, and audit.</p>
+        <p class="lede">Comprehensive digital management: authentication, inventory lifecycle, clinical requests, automated allocation, and regulatory compliance.</p>
         <div class="cards">
           <article class="card">
             <div class="icon-pill">01</div>
@@ -163,11 +182,11 @@
     </main>
 
     <footer class="site-footer">
-      <span>Smart Blood Bank Management System · Team Abbas Haider &amp; others</span>
-      <span>&copy; <span data-year></span> SEN-311L</span>
+      <span>Smart Blood Bank Management System</span>
+      <span>&copy; <span data-year></span> Smart Blood Bank Inc. All rights reserved.</span>
     </footer>
-    <script src="js/validation.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/pages.js"></script>
+    <script src="js/validation.js?v=2"></script>
+    <script src="js/auth.js?v=4"></script>
+    <script src="js/pages.js?v=3"></script>
   </body>
 </html>
