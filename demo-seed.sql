@@ -6,7 +6,7 @@
 
 SET @demo_facility_id := 1;
 SET @demo_hospital_institution := 'HOSP-DEMO';
-SET @demo_password_hash := '$2y$10$4OdqEQXMrw5gotQewF4HB.LfTuk4P1pXIFZSBrzVbxbKdsGNJUlJq'; -- Staff@123
+SET @demo_password_hash := '$2y$12$.y/w8mQlnu.leD7A0YDCzuuMsPp8xJ8wC447I6WcFFyuYkGRghifC'; -- HospitalDemo!2026
 
 CREATE TABLE IF NOT EXISTS demo_seed_metadata (
     setting_key varchar(50) NOT NULL PRIMARY KEY,
@@ -26,9 +26,9 @@ LIMIT 1;
 
 -- Create a clearly labeled requester account for the demo queue if needed.
 INSERT INTO users (username, full_name, email, phone, password_hash, role, blood_group, institution_id)
-SELECT 'hospitaldemo', 'DEMO Hospital Requester', 'hospitaldemo@demo.invalid', 'DEMO ONLY',
+SELECT 'hospital_demo', 'DEMO Hospital Requester', 'hospital.demo@example.test', '03000000003',
        @demo_password_hash, 'HOSPITAL_REQUESTER', 'O+', @demo_hospital_institution
-WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'hospitaldemo');
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'hospital_demo');
 
 -- 48 synthetic donor profiles, each visibly labeled as demo data.
 INSERT INTO donors (managed_by, name, contact_details, blood_group, last_donation_date)
@@ -106,7 +106,7 @@ SELECT h.user_id,
        'PENDING', DATE_SUB(CONCAT(@demo_anchor_date, ' 12:00:00'), INTERVAL MOD(seq.n, 20) DAY),
        CONCAT('DEMO-REQUEST-', LPAD(seq.n, 3, '0'))
 FROM seq
-JOIN users h ON h.username = 'hospitaldemo'
+JOIN users h ON h.username = 'hospital_demo'
 WHERE NOT EXISTS (
     SELECT 1 FROM blood_requests r
     WHERE r.submitted_by = h.user_id
@@ -119,7 +119,7 @@ SELECT @demo_staff_id, 'DEMO_DATA_SEEDED', NULL,
        'Repeatable demo import: synthetic donors, inventory units, and hospital requests.'
 WHERE @demo_staff_id IS NOT NULL;
 
--- Sign-in for the synthetic requester account: hospitaldemo / Staff@123
+-- Sign-in for the synthetic requester account: hospital_demo / HospitalDemo!2026
 -- Change the password before using this account outside a classroom demo.
 SELECT @demo_staff_id AS demo_staff_manager_id, @demo_facility_id AS demo_inventory_facility_id,
        @demo_anchor_date AS seed_anchor_date;

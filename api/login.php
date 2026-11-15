@@ -21,11 +21,8 @@ if (empty($password)) {
 
 $conn = getDb();
 
-// Seed demo account in database if not present
-ensureDemoUserExists($conn);
-
 $stmt = $conn->prepare(
-    "SELECT user_id, username, full_name, email, phone, password_hash, must_change_password, role, blood_group, institution_id, institution_verified
+    "SELECT user_id, username, full_name, email, phone, password_hash, must_change_password, role, blood_group, institution_id, institution_verified, approval_status
      FROM users
      WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)
      LIMIT 1"
@@ -73,6 +70,13 @@ if (!$authenticated) {
     jsonResponse(['success' => false, 'message' => 'Incorrect password.'], 401);
 }
 
+if (($user['approval_status'] ?? 'APPROVED') !== 'APPROVED') {
+    $message = $user['approval_status'] === 'REJECTED'
+        ? 'This role application was not approved. Contact the blood bank administrator for help.'
+        : 'Your account request is waiting for Admin approval. You can sign in after it is approved.';
+    jsonResponse(['success' => false, 'message' => $message, 'approval_status' => $user['approval_status']], 403);
+}
+
 // Upgrade password hash to bcrypt if it was legacy/plain
 if ($needsRehash) {
     $newHash = password_hash($password, PASSWORD_BCRYPT);
@@ -92,6 +96,7 @@ $userSession = [
     'fullName'      => $user['full_name'],
     'institutionId' => $user['institution_id'],
     'institutionVerified' => (bool)$user['institution_verified'],
+    'approvalStatus' => $user['approval_status'] ?? 'APPROVED',
     'mustChangePassword' => (bool)$user['must_change_password'],
     'bloodGroup'    => $user['blood_group'] ?? ''
 ];

@@ -151,10 +151,15 @@ requireAuth(['STAFF', 'ADMIN']);
 // POST Action: Log Donation (FR-05)
 if ($action === 'log_donation') {
     $rawDonorId     = $data['donor_id'] ?? null;
+    $rawAppointmentId = $data['appointment_id'] ?? null;
     if (!isValidIntegerRange($rawDonorId, 1, PHP_INT_MAX)) {
         jsonResponse(['success' => false, 'message' => 'Please select a valid registered donor.'], 400);
     }
     $donorId        = (int)$rawDonorId;
+    if ($rawAppointmentId !== null && $rawAppointmentId !== '' && !isValidIntegerRange($rawAppointmentId, 1, PHP_INT_MAX)) {
+        jsonResponse(['success' => false, 'message' => 'Select a valid donor appointment.'], 400);
+    }
+    $appointmentId  = $rawAppointmentId === null || $rawAppointmentId === '' ? null : (int)$rawAppointmentId;
     $collectionDate = trim((string)($data['collection_date'] ?? ''));
     $shelfLifeDays  = $data['shelf_life_days'] ?? null;
     $inputGroup     = trim($data['blood_group'] ?? '');
@@ -183,6 +188,19 @@ if ($action === 'log_donation') {
     }
     $donor = $dRes->fetch_assoc();
     $dCheck->close();
+
+    if ($appointmentId !== null) {
+        $appointmentCheck = $conn->prepare(
+            "SELECT a.appointment_id FROM donation_appointments a JOIN donor_profiles p ON p.donor_id = a.donor_id " .
+            "WHERE a.appointment_id = ? AND a.donor_id = ? AND a.facility_id = ? AND a.status = 'CONFIRMED' AND p.profile_status = 'VERIFIED' LIMIT 1 FOR UPDATE"
+        );
+        if (!$appointmentCheck) jsonResponse(['success' => false, 'message' => 'Could not verify the confirmed donor appointment.'], 500);
+        $appointmentCheck->bind_param('iii', $appointmentId, $donorId, $institutionId);
+        $appointmentCheck->execute();
+        $appointmentFound = $appointmentCheck->get_result()->num_rows === 1;
+        $appointmentCheck->close();
+        if (!$appointmentFound) jsonResponse(['success' => false, 'message' => 'The confirmed appointment does not match this donor and facility.'], 409);
+    }
 
     $bloodGroup = !empty($inputGroup) ? toDbBloodGroup($inputGroup) : $donor['blood_group'];
 
@@ -223,7 +241,19 @@ if ($action === 'log_donation') {
         $upDonor->close();
     }
 
-    logAudit($conn, $userId, 'DONATION_LOGGED', $unitId, "Unit #$unitId from Donor {$donor['name']} ($bloodGroup). Status: QUARANTINED");
+    if ($appointmentId !== null) {
+        $complete = $conn->prepare("UPDATE donation_appointments SET status = 'COMPLETED', reviewed_by = ? WHERE appointment_id = ? AND donor_id = ? AND facility_id = ? AND status = 'CONFIRMED'");
+        if (!$complete) jsonResponse(['success' => false, 'message' => 'Could not complete the linked appointment.'], 500);
+        $complete->bind_param('iiii', $userId, $appointmentId, $donorId, $institutionId);
+        if (!$complete->execute() || $complete->affected_rows !== 1) {
+            $complete->close();
+            jsonResponse(['success' => false, 'message' => 'Could not complete the linked appointment.'], 409);
+        }
+        $complete->close();
+        logAudit($conn, $userId, 'DONATION_APPOINTMENT_COMPLETED', $appointmentId, "Staff recorded collection for appointment #{$appointmentId}; unit #{$unitId} entered quarantine.");
+    }
+
+    logAudit($conn, $userId, 'DONATION_LOGGED', $unitId, "Unit #$unitId from donor #{$donorId} ($bloodGroup). Status: QUARANTINED");
 
     jsonResponse([
         'success'     => true,

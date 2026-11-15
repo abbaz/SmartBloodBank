@@ -8,7 +8,7 @@ const PATTERNS = {
   subject: /^[A-Za-z0-9 ,.'!?:-]{5,80}$/,
 };
 
-const ROLES = ["ADMIN", "STAFF", "LAB_TECHNICIAN", "HOSPITAL_REQUESTER"];
+const ROLES = ["ADMIN", "STAFF", "LAB_TECHNICIAN", "HOSPITAL_REQUESTER", "USER"];
 const BLOOD_GROUPS = ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"];
 
 function setFieldState(input, message) {

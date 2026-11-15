@@ -4,10 +4,14 @@ Run these checks before presenting or deploying the project. Use synthetic data 
 
 ## Functional and security checks
 
-- [ ] Register a requester publicly; verify the API assigns `HOSPITAL_REQUESTER` regardless of submitted role fields.
-- [ ] Verify a requester cannot promote themselves, while an Admin can promote a registered requester, with facility assignment and a visible audit event.
+- [ ] Register as `USER`/Donor; verify the account is active, donor profile is pending staff verification, and donor APIs expose only that donor's information. Submit Staff, Hospital Requester, and Lab applications; verify each remains pending and cannot sign in until Admin approval.
+- [ ] Verify the registration API rejects `ADMIN`, Admin approval is facility-scoped for staff/lab roles, and an Admin can promote only an approved regular User with a visible audit event.
 - [ ] Verify Admin password resets are limited to the Admin's facility, the temporary password is not written to the audit log, and the reset user must change it before using protected APIs.
-- [ ] Verify a newly self-registered requester sees only requests they submitted until an administrator verifies the institution.
+- [ ] Verify an approved Hospital Requester sees only requests they submitted, and that pending applicants cannot read protected data or place requests before approval.
+- [ ] Register a Donor, verify the donor profile stays pending while account access works, then verify it through Donor Queue. Confirm a second account cannot access that donor's profile, appointment, or history by changing submitted IDs.
+- [ ] Request and cancel a donor appointment; confirm it from Staff, then record collection through the queue and verify a quarantined unit is created and the appointment becomes completed.
+- [ ] Confirm the linked unit remains unavailable to allocation until Lab clearance; verify the Donor sees only a safe history status and no screening details or recipient data.
+- [ ] Confirm an unlinked historic donor account requires staff identity review before linking and that a donor record cannot be linked to multiple user accounts.
 - [ ] Have an administrator provision facility staff and a verified hospital requester; confirm each role sees only its permitted facility/institution records.
 - [ ] Confirm a staff member at facility A cannot list, inspect, recommend units for, allocate, or print a slip for a request assigned to facility B.
 - [ ] Exercise each of the eight recipient groups against the compatibility table; verify every returned unit is compatible and expired units are always blocked.

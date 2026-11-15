@@ -108,6 +108,16 @@ function donorBelongsToInstitution($conn, $donorId, $institutionCodes) {
     return $owned;
 }
 
+function donorLinkedUserId($conn, $donorId) {
+    $stmt = $conn->prepare('SELECT user_id FROM donors WHERE donor_id = ? LIMIT 1');
+    if (!$stmt) return null;
+    $stmt->bind_param('i', $donorId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return !empty($row['user_id']) ? (int)$row['user_id'] : null;
+}
+
 // POST Action: Delete donor
 if ($action === 'delete' || $method === 'DELETE') {
     $donorId = (int)($data['donor_id'] ?? $_GET['donor_id'] ?? 0);
@@ -116,6 +126,9 @@ if ($action === 'delete' || $method === 'DELETE') {
     }
     if (!donorBelongsToInstitution($conn, $donorId, $institutionCodes)) {
         jsonResponse(['success' => false, 'message' => 'Donor not found in your institution.'], 404);
+    }
+    if (donorLinkedUserId($conn, $donorId) !== null) {
+        jsonResponse(['success' => false, 'message' => 'This donor is linked to an account. Keep the record and correct details through an audited update instead.'], 409);
     }
 
     $stmt = $conn->prepare("DELETE FROM donors WHERE donor_id = ?");
@@ -155,6 +168,8 @@ if ($action === 'update' || $method === 'PUT') {
         jsonResponse(['success' => false, 'message' => 'Donor not found in your institution.'], 404);
     }
 
+    $linkedUserId = donorLinkedUserId($conn, $donorId);
+    $conn->begin_transaction();
     $stmt = $conn->prepare(
         "UPDATE donors SET name = ?, contact_details = ?, blood_group = ?, last_donation_date = ? WHERE donor_id = ?"
     );
@@ -169,7 +184,53 @@ if ($action === 'update' || $method === 'PUT') {
     }
     $stmt->close();
 
-    logAudit($conn, $userId, 'DONOR_UPDATED', $donorId, "Donor #$donorId updated ($name, $bloodGroup)");
+    if ($linkedUserId !== null) {
+        $displayGroup = toDisplayBloodGroup($bloodGroup);
+        $userUpdate = $conn->prepare('UPDATE users SET full_name = ?, blood_group = ? WHERE user_id = ?');
+        if (!$userUpdate) jsonResponse(['success' => false, 'message' => 'Could not sync the linked donor account.'], 500);
+        $userUpdate->bind_param('ssi', $name, $displayGroup, $linkedUserId);
+        if (!$userUpdate->execute()) {
+            $userUpdate->close();
+            jsonResponse(['success' => false, 'message' => 'Could not sync the linked donor account.'], 500);
+        }
+        $userUpdate->close();
+        if (isValidPhoneNumber($contact, false)) {
+            $phoneUpdate = $conn->prepare('UPDATE users SET phone = ? WHERE user_id = ?');
+            if (!$phoneUpdate) jsonResponse(['success' => false, 'message' => 'Could not sync the linked donor contact.'], 500);
+            $phoneUpdate->bind_param('si', $contact, $linkedUserId);
+            if (!$phoneUpdate->execute()) {
+                $phoneUpdate->close();
+                jsonResponse(['success' => false, 'message' => 'Could not sync the linked donor contact.'], 500);
+            }
+            $phoneUpdate->close();
+        } else {
+            $emailCheck = $conn->prepare('SELECT user_id FROM users WHERE LOWER(email) = LOWER(?) AND user_id <> ? LIMIT 1');
+            if (!$emailCheck) jsonResponse(['success' => false, 'message' => 'Could not validate the linked donor email.'], 500);
+            $emailCheck->bind_param('si', $contact, $linkedUserId);
+            $emailCheck->execute();
+            $emailTaken = $emailCheck->get_result()->num_rows > 0;
+            $emailCheck->close();
+            if ($emailTaken) jsonResponse(['success' => false, 'message' => 'That email belongs to another account and cannot be linked to this donor.'], 409);
+            $emailUpdate = $conn->prepare('UPDATE users SET email = ? WHERE user_id = ?');
+            if (!$emailUpdate) jsonResponse(['success' => false, 'message' => 'Could not sync the linked donor email.'], 500);
+            $emailUpdate->bind_param('si', $contact, $linkedUserId);
+            if (!$emailUpdate->execute()) {
+                $emailUpdate->close();
+                jsonResponse(['success' => false, 'message' => 'Could not sync the linked donor email.'], 500);
+            }
+            $emailUpdate->close();
+        }
+        $profileUpdate = $conn->prepare('UPDATE donor_profiles SET blood_group = ? WHERE user_id = ?');
+        if (!$profileUpdate) jsonResponse(['success' => false, 'message' => 'Could not sync the linked donor profile.'], 500);
+        $profileUpdate->bind_param('si', $bloodGroup, $linkedUserId);
+        if (!$profileUpdate->execute()) {
+            $profileUpdate->close();
+            jsonResponse(['success' => false, 'message' => 'Could not sync the linked donor profile.'], 500);
+        }
+        $profileUpdate->close();
+    }
+
+    logAudit($conn, $userId, 'DONOR_UPDATED', $donorId, "Donor #$donorId profile updated (blood group {$bloodGroup}).");
 
     jsonResponse(['success' => true, 'message' => 'Donor profile updated successfully.']);
 }
@@ -212,7 +273,7 @@ if ($method === 'POST') {
     $donorId = $stmt->insert_id;
     $stmt->close();
 
-    logAudit($conn, $userId, 'DONOR_CREATED', $donorId, "New donor registered: $name ($bloodGroup)");
+    logAudit($conn, $userId, 'DONOR_CREATED', $donorId, "Donor #{$donorId} registered (blood group {$bloodGroup}).");
 
     jsonResponse([
         'success'  => true,

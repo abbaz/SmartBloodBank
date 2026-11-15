@@ -133,19 +133,32 @@ SELECT @staff_b, @unit_b, @request_b;
         phone = '03000000001'; institutionId = 'HOSP-TEST'; bloodGroup = 'O+'; password = 'weakpass'
     }
     Assert-Check ($weakRegistration.Status -eq 400) 'registration rejects a weak password at the API boundary'
+    $forbiddenAdminRegistration = Invoke-Api 'api/register.php' $anonymous 'POST' @{
+        fullName = 'Forbidden Admin'; username = "x$stamp"; email = "x$stamp@example.test";
+        phone = '03000000011'; institutionId = 'FUSST-BB'; role = 'ADMIN'; bloodGroup = 'O+'; password = 'TestPass!123'
+    }
+    Assert-Check ($forbiddenAdminRegistration.Status -eq 400) 'public registration rejects Admin as a role choice'
+    $adminA = Login "atest$stamp" 'Staff@123'
     $registration = Invoke-Api 'api/register.php' $anonymous 'POST' @{
         fullName = 'Integration Requester'; username = "r$stamp"; email = "r$stamp@example.test";
-        phone = '03000000001'; institutionId = 'HOSP-TEST'; role = 'ADMIN'; bloodGroup = 'O+'; password = 'TestPass!123'
+        phone = '03000000001'; institutionId = 'HOSP-TEST'; role = 'HOSPITAL_REQUESTER'; bloodGroup = 'O+'; password = 'TestPass!123'
     }
-    Assert-Check ($registration.Status -eq 201 -and $registration.Json.user.role -eq 'HOSPITAL_REQUESTER' -and -not $registration.Json.user.institutionVerified) 'public registration cannot self-assign a privileged role'
-
-    $requester = $anonymous
+    Assert-Check ($registration.Status -eq 202 -and $registration.Json.approval_status -eq 'PENDING' -and -not $registration.Json.user) 'hospital role application is pending and receives no authenticated session'
+    $preApprovalSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+    $preApprovalLogin = Invoke-Api 'api/login.php' $preApprovalSession 'POST' @{ identity = "r$stamp"; password = 'TestPass!123' }
+    Assert-Check ($preApprovalLogin.Status -eq 403) 'hospital applicant cannot sign in before Admin approval'
+    $requesterId = [int](Run-Mysql "SELECT user_id FROM users WHERE username='r$stamp';" -Quiet)
+    $requesterApproval = Invoke-Api 'api/account-requests.php' $adminA 'POST' @{ user_id = $requesterId; decision = 'APPROVE' }
+    Assert-Check ($requesterApproval.Status -eq 200 -and $requesterApproval.Json.approval_status -eq 'APPROVED') 'Admin can approve a pending hospital account application'
+    $requester = Login "r$stamp" 'TestPass!123'
     $registrationSession = Invoke-Api 'api/session.php' $requester
-    $cookieCount = $requester.Cookies.GetCookies("http://127.0.0.1:$Port/").Count
-    $cookie = $requester.Cookies.GetCookies("http://127.0.0.1:$Port/")[0]
-    $sessionPath = Join-Path $sessionDir "sess_$($cookie.Value)"
-    $sessionHasRequester = (Test-Path -LiteralPath $sessionPath) -and ((Get-Content -LiteralPath $sessionPath -Raw) -match 'HOSPITAL_REQUESTER')
-    Assert-Check ($registrationSession.Json.authenticated -and $registrationSession.Json.user.role -eq 'HOSPITAL_REQUESTER') "registration establishes a requester session (authenticated=$($registrationSession.Json.authenticated), cookieCount=$cookieCount, sessionFile=$sessionHasRequester)"
+    Assert-Check ($registrationSession.Json.authenticated -and $registrationSession.Json.user.role -eq 'HOSPITAL_REQUESTER') 'approved hospital requester can sign in with its approved role'
+    $basicRegistrationSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+    $basicRegistration = Invoke-Api 'api/register.php' $basicRegistrationSession 'POST' @{
+        fullName = 'Regular Integration User'; username = "u$stamp"; email = "u$stamp@example.test";
+        phone = '03000000010'; role = 'USER'; password = 'TestPass!123'
+    }
+    Assert-Check ($basicRegistration.Status -eq 201 -and $basicRegistration.Json.user.role -eq 'USER') 'regular User account is available immediately'
     $newRequest = Invoke-Api 'api/hospital.php' $requester 'POST' @{ action = 'place_requisition'; blood_group = 'A+'; quantity = 2; urgency = 'URGENT'; patient_ref = 'INTEGRATION-PARTIAL'; clinical_indication = 'Elective Surgery' }
     Assert-Check ($newRequest.Status -eq 201 -and $newRequest.Json.success) "requester can place a two-unit hospital requisition (HTTP $($newRequest.Status): $($newRequest.Json.message))"
     $invalidQuantity = Invoke-Api 'api/hospital.php' $requester 'POST' @{ action = 'place_requisition'; blood_group = 'A+'; quantity = 1.5; urgency = 'URGENT'; patient_ref = 'INTEGRATION-INVALID'; clinical_indication = 'Elective Surgery' }
@@ -158,24 +171,23 @@ SELECT @staff_b, @unit_b, @request_b;
     $candidateUsername = "p$stamp"
     $candidateRegistration = Invoke-Api 'api/register.php' $candidateSession 'POST' @{
         fullName = 'Admin Promotion Candidate'; username = $candidateUsername; email = "$candidateUsername@example.test";
-        phone = '03000000007'; institutionId = 'HOSP-PROMO'; role = 'ADMIN'; bloodGroup = 'O+'; password = 'CandidatePass!123'
+        phone = '03000000007'; institutionId = ''; role = 'USER'; bloodGroup = ''; password = 'CandidatePass!123'
     }
-    Assert-Check ($candidateRegistration.Status -eq 201 -and $candidateRegistration.Json.user.role -eq 'HOSPITAL_REQUESTER') 'admin promotion candidate starts as a requester'
+    Assert-Check ($candidateRegistration.Status -eq 201 -and $candidateRegistration.Json.user.role -eq 'USER') 'admin promotion candidate starts as a regular User'
     $selfPromotion = Invoke-Api 'api/register.php' $candidateSession 'POST' @{ action = 'promote_to_admin'; username_or_email = $candidateUsername }
-    Assert-Check ($selfPromotion.Status -eq 403) 'requester cannot promote themselves to Admin'
+    Assert-Check ($selfPromotion.Status -eq 403) 'regular User cannot promote themselves to Admin'
 
     $staffA = Login 'staff@bloodbank.pk' 'Staff@123'
     $staffB = Login "btest$stamp" 'Staff@123'
     $profileUpdate = Invoke-Api 'api/profile.php' $staffA 'POST' @{ action = 'update_profile'; full_name = 'Demo Staff Integration'; phone = '03000000005' }
     $profileRead = Invoke-Api 'api/profile.php?action=get_profile' $staffA
     Assert-Check ($profileUpdate.Status -eq 200 -and $profileRead.Json.user.full_name -eq 'Demo Staff Integration') 'users can update and read back their own profile'
-    $adminA = Login "atest$stamp" 'Staff@123'
     $adminB = Login "adminb$stamp" 'Staff@123'
     $promotion = Invoke-Api 'api/register.php' $adminA 'POST' @{ action = 'promote_to_admin'; username_or_email = $candidateUsername }
-    Assert-Check ($promotion.Status -eq 200 -and $promotion.Json.user.role -eq 'ADMIN' -and $promotion.Json.user.institutionId -eq 'FUSST-BB') 'admin can promote a registered requester into the admin facility'
+    Assert-Check ($promotion.Status -eq 200 -and $promotion.Json.user.role -eq 'ADMIN' -and $promotion.Json.user.institutionId -eq 'FUSST-BB') 'admin can promote a regular User into the admin facility'
     $promotedLogin = Login $candidateUsername 'CandidatePass!123'
     $promotedSession = Invoke-Api 'api/session.php' $promotedLogin
-    Assert-Check ($promotedSession.Json.authenticated -and $promotedSession.Json.user.role -eq 'ADMIN') 'promoted requester receives Admin access on a fresh sign-in'
+    Assert-Check ($promotedSession.Json.authenticated -and $promotedSession.Json.user.role -eq 'ADMIN') 'promoted regular User receives Admin access on a fresh sign-in'
     $promotionAudit = Invoke-Api 'api/audit.php' $adminA
     Assert-Check (@($promotionAudit.Json.logs | Where-Object { $_.action -eq 'USER_ROLE_PROMOTED' -and $_.entity_id -eq $promotion.Json.user.userId }).Count -eq 1) 'Admin promotion is recorded in the facility audit trail'
     $crossFacilityReset = Invoke-Api 'api/admin-password-reset.php' $adminB 'POST' @{ username_or_email = $candidateUsername }

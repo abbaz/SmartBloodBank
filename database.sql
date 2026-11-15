@@ -14,10 +14,11 @@ CREATE TABLE IF NOT EXISTS `users` (
   `phone` varchar(20) DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
   `must_change_password` tinyint(1) NOT NULL DEFAULT 0,
-  `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER') NOT NULL,
+  `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER','USER') NOT NULL,
   `blood_group` varchar(8) DEFAULT NULL,
   `institution_id` varchar(12) NOT NULL,
   `institution_verified` tinyint(1) NOT NULL DEFAULT 0,
+  `approval_status` enum('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'APPROVED',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `contact_messages` (
   `full_name` varchar(60) NOT NULL,
   `email` varchar(120) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
-  `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER') NOT NULL,
+  `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER','USER') NOT NULL,
   `subject` varchar(80) NOT NULL,
   `message` varchar(1000) NOT NULL,
   `sent_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -39,11 +40,48 @@ CREATE TABLE IF NOT EXISTS `contact_messages` (
 CREATE TABLE IF NOT EXISTS `donors` (
   `donor_id` int NOT NULL AUTO_INCREMENT,
   `managed_by` int DEFAULT NULL,
+  `user_id` int DEFAULT NULL,
   `name` varchar(100) NOT NULL,
   `contact_details` varchar(150) DEFAULT NULL,
   `blood_group` enum('O_NEGATIVE','O_POSITIVE','A_NEGATIVE','A_POSITIVE','B_NEGATIVE','B_POSITIVE','AB_NEGATIVE','AB_POSITIVE') NOT NULL,
   `last_donation_date` date DEFAULT NULL,
-  PRIMARY KEY (`donor_id`)
+  PRIMARY KEY (`donor_id`),
+  UNIQUE KEY `uq_donors_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Donor self-service profile review and donation appointment workflow
+CREATE TABLE IF NOT EXISTS `donor_profiles` (
+  `user_id` int NOT NULL,
+  `facility_id` int NOT NULL,
+  `blood_group` varchar(16) NOT NULL,
+  `profile_status` enum('PENDING','VERIFIED','REJECTED') NOT NULL DEFAULT 'PENDING',
+  `consent_at` datetime NOT NULL,
+  `donor_id` int DEFAULT NULL,
+  `reviewed_by` int DEFAULT NULL,
+  `reviewed_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`),
+  UNIQUE KEY `uq_donor_profiles_donor_id` (`donor_id`),
+  KEY `idx_donor_profiles_facility_status` (`facility_id`, `profile_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `donation_appointments` (
+  `appointment_id` int NOT NULL AUTO_INCREMENT,
+  `donor_id` int NOT NULL,
+  `facility_id` int NOT NULL,
+  `requested_date` date NOT NULL,
+  `requested_time` time NOT NULL,
+  `scheduled_date` date DEFAULT NULL,
+  `scheduled_time` time DEFAULT NULL,
+  `status` enum('PENDING','CONFIRMED','DECLINED','CANCELLED','COMPLETED','NO_SHOW') NOT NULL DEFAULT 'PENDING',
+  `staff_note` varchar(300) DEFAULT NULL,
+  `reviewed_by` int DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`appointment_id`),
+  KEY `idx_donation_appointments_facility_status` (`facility_id`, `status`, `requested_date`),
+  KEY `idx_donation_appointments_donor` (`donor_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. Blood Units Table
@@ -103,9 +141,6 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   PRIMARY KEY (`log_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Default Demo Seed Accounts (Password for all demo accounts: Staff@123)
--- Password bcrypt hash for 'Staff@123'
-INSERT INTO `users` (`username`, `full_name`, `email`, `phone`, `password_hash`, `role`, `blood_group`, `institution_id`)
-VALUES 
-  ('staffdemo', 'Demo Staff', 'staff@bloodbank.pk', '03001234567', '$2y$10$4OdqEQXMrw5gotQewF4HB.LfTuk4P1pXIFZSBrzVbxbKdsGNJUlJq', 'STAFF', 'O+', 'FUSST-BB')
-ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
+-- Import database-demo-accounts-reset.sql separately to create local test
+-- accounts. Keeping credentials out of this schema avoids silently reseeding
+-- privileged demo logins on a normal schema import.

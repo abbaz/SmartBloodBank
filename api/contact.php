@@ -17,7 +17,7 @@ $role     = trim($data['role'] ?? '');
 $subject  = trim($data['subject'] ?? '');
 $message  = trim($data['message'] ?? '');
 
-$allowedRoles = ['ADMIN', 'STAFF', 'LAB_TECHNICIAN', 'HOSPITAL_REQUESTER'];
+$allowedRoles = ['ADMIN', 'STAFF', 'LAB_TECHNICIAN', 'HOSPITAL_REQUESTER', 'USER'];
 
 if (!isValidFullName($fullName)) {
     jsonResponse(['success' => false, 'message' => 'Enter a valid full name (3-60 letters, spaces, apostrophes, periods, or hyphens).'], 400);

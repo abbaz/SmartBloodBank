@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Donor Portal | Smart Blood Bank</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css?v=5" />
+  </head>
+  <body data-page="donorportal">
+    <header class="site-header">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 5 10.2 5 15.2A7 7 0 0 0 19 15.2C19 10.2 12 2 12 2Z" /></svg></span>
+        <span>Smart Blood Bank<small>Expiry-aware allocation</small></span>
+      </a>
+      <nav class="nav-links" data-nav></nav>
+    </header>
+
+    <main class="page-container">
+      <div class="page-header-row">
+        <div>
+          <p class="kicker">Donor self-service</p>
+          <h1>Donor Portal</h1>
+          <p class="lede">Manage your donor profile, request a visit, and check your own donation history.</p>
+        </div>
+      </div>
+      <div id="donorPortalBanner" class="form-banner" role="status" aria-live="polite"></div>
+      <section class="profile-card profile-card--wide" id="donorOnboardingCard" hidden>
+        <h2>Complete your donor profile</h2>
+        <p class="threshold-hint">Staff will verify your profile before you can request an appointment. This is not a medical eligibility check.</p>
+        <form id="donorOnboardingForm" class="portal-form">
+          <div class="form-row">
+            <div class="form-group"><label for="donorFacilityId">Preferred blood bank facility ID</label><input id="donorFacilityId" type="number" min="1" max="2147483647" value="1" required /></div>
+            <div class="form-group"><label for="donorOnboardingGroup">Blood group</label><select id="donorOnboardingGroup" required><option value="">Select group</option><option>O-</option><option>O+</option><option>A-</option><option>A+</option><option>B-</option><option>B+</option><option>AB-</option><option>AB+</option></select></div>
+          </div>
+          <label class="checkbox" for="donorConsent"><input id="donorConsent" type="checkbox" required /><span>I consent to creating this donor profile and allow authorized staff to review it and contact me about appointments.</span></label>
+          <button class="btn btn-primary" type="submit">Submit donor profile</button>
+        </form>
+      </section>
+
+      <div class="portal-grid" id="donorDashboard" hidden>
+        <section class="profile-card">
+          <h2>Your donor profile</h2>
+          <div id="donorProfileStatus" class="form-banner form-banner--info" role="status"></div>
+          <form id="donorProfileForm" class="portal-form">
+            <div class="form-group"><label for="donorName">Full name</label><input id="donorName" maxlength="60" required /></div>
+            <div class="form-group"><label for="donorEmail">Email</label><input id="donorEmail" type="email" readonly /></div>
+            <div class="form-group"><label for="donorPhone">Mobile number</label><input id="donorPhone" type="tel" maxlength="16" required /></div>
+            <div class="form-group"><label for="donorBloodGroup">Blood group</label><select id="donorBloodGroup" required><option>O-</option><option>O+</option><option>A-</option><option>A+</option><option>B-</option><option>B+</option><option>AB-</option><option>AB+</option></select></div>
+            <div class="form-group"><label for="donorFacility">Preferred facility ID</label><input id="donorFacility" type="text" readonly /></div>
+            <p class="threshold-hint">Changing your name, phone, or blood group sends the profile back for staff verification.</p>
+            <button class="btn btn-primary" type="submit">Save donor profile</button>
+          </form>
+        </section>
+
+        <section class="profile-card">
+          <h2>Request a donation appointment</h2>
+          <p id="appointmentEligibility" class="threshold-hint">Staff confirmation is required. Appointment requests do not record a donation.</p>
+          <form id="donorAppointmentForm" class="portal-form">
+            <div class="form-group"><label for="requestedDate">Preferred date</label><input id="requestedDate" type="date" required /></div>
+            <div class="form-group"><label for="requestedTime">Preferred time</label><input id="requestedTime" type="time" required /></div>
+            <button class="btn btn-primary" type="submit">Request appointment</button>
+          </form>
+        </section>
+
+        <section class="profile-card profile-card--wide">
+          <h2>Your appointments</h2>
+          <div class="table-wrap"><table><thead><tr><th>Requested</th><th>Scheduled</th><th>Status</th><th>Action</th></tr></thead><tbody id="donorAppointments"><tr><td colspan="4">Loading appointments…</td></tr></tbody></table></div>
+        </section>
+
+        <section class="profile-card profile-card--wide">
+          <h2>Your donation history</h2>
+          <p class="threshold-hint">This summary does not include screening details or recipient information.</p>
+          <div class="table-wrap"><table><thead><tr><th>Collection date</th><th>Blood group</th><th>Units recorded</th><th>Status</th></tr></thead><tbody id="donorHistory"><tr><td colspan="4">Loading donation history…</td></tr></tbody></table></div>
+          <p id="eligibilityEstimate" class="threshold-hint"></p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer"><span>Smart Blood Bank Management System</span><span>&copy; <span data-year></span> Smart Blood Bank Inc.</span></footer>
+    <script src="js/auth.js?v=6"></script>
+    <script src="js/donor-portal.js?v=1"></script>
+  </body>
+</html>

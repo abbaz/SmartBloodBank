@@ -24,9 +24,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (session.role === 'ADMIN') {
     document.getElementById('thresholdsSection').style.display = 'block';
     document.getElementById('provisionUserSection').style.display = 'block';
+    document.getElementById('accountApprovalsSection').style.display = 'block';
     document.getElementById('promoteAdminSection').style.display = 'block';
     document.getElementById('adminPasswordResetSection').style.display = 'block';
     loadThresholds();
+    loadAccountApplications();
   }
 });
 
@@ -68,7 +70,7 @@ document.getElementById('promoteAdminForm')?.addEventListener('submit', async (e
   const form = e.currentTarget;
   const identity = document.getElementById('promoteAdminIdentity').value.trim();
   if (!identity) return;
-  if (!window.confirm(`Promote ${identity} to Admin for your facility? They will receive administrator access.`)) return;
+  if (!window.confirm(`Promote ${identity}, an approved regular User, to Admin for your facility? They will receive administrator access.`)) return;
 
   const button = form.querySelector('[type="submit"]');
   button.disabled = true;
@@ -88,6 +90,73 @@ document.getElementById('promoteAdminForm')?.addEventListener('submit', async (e
     button.disabled = false;
   }
 });
+
+async function loadAccountApplications() {
+  const container = document.getElementById('accountApprovalsList');
+  if (!container) return;
+  try {
+    const res = await fetch('api/account-requests.php');
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Could not load role applications.');
+    container.replaceChildren();
+    if (!data.applications.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'There are no pending role applications in your approval scope.';
+      container.append(empty);
+      return;
+    }
+    for (const application of data.applications) {
+      const card = document.createElement('article');
+      card.className = 'approval-item';
+      const details = document.createElement('div');
+      details.className = 'approval-item__details';
+      const title = document.createElement('strong');
+      title.textContent = `${application.fullName} · ${application.role.replaceAll('_', ' ')}`;
+      const meta = document.createElement('p');
+      meta.textContent = `@${application.username} · ${application.email} · Institution: ${application.institutionId}`;
+      const phone = document.createElement('small');
+      phone.textContent = application.phone || 'No phone provided';
+      details.append(title, meta, phone);
+      const actions = document.createElement('div');
+      actions.className = 'approval-item__actions';
+      for (const [decision, label, className] of [
+        ['APPROVE', 'Approve', 'btn btn-primary'],
+        ['REJECT', 'Reject', 'btn btn-ghost'],
+      ]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = className;
+        button.textContent = label;
+        button.addEventListener('click', () => reviewAccountApplication(application, decision, button));
+        actions.append(button);
+      }
+      card.append(details, actions);
+      container.append(card);
+    }
+  } catch (err) {
+    container.textContent = err.message;
+  }
+}
+
+async function reviewAccountApplication(application, decision, button) {
+  const actionLabel = decision === 'APPROVE' ? 'approve' : 'reject';
+  if (!window.confirm(`${actionLabel[0].toUpperCase()}${actionLabel.slice(1)} ${application.role.replaceAll('_', ' ')} access for ${application.username}?`)) return;
+  button.disabled = true;
+  try {
+    const res = await fetch('api/account-requests.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: application.userId, decision }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || `Could not ${actionLabel} application.`);
+    showBanner('accountApprovalsBanner', 'success', data.message);
+    await loadAccountApplications();
+  } catch (err) {
+    showBanner('accountApprovalsBanner', 'error', err.message);
+    button.disabled = false;
+  }
+}
 
 document.getElementById('adminPasswordResetForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -135,7 +204,7 @@ async function loadProfile() {
     document.getElementById('profileName').value       = u.full_name || '';
     document.getElementById('profileEmail').value      = u.email || '';
     document.getElementById('profileUsername').value   = u.username || '';
-    document.getElementById('profileRole').value       = (u.role || '').replaceAll('_', ' ');
+    document.getElementById('profileRole').value       = u.role === 'USER' ? 'DONOR' : (u.role || '').replaceAll('_', ' ');
     document.getElementById('profilePhone').value      = u.phone || '';
     document.getElementById('profileInstitution').value = u.institution_id || '';
     document.getElementById('profileBloodGroup').value = u.blood_group_display || '—';

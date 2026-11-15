@@ -48,7 +48,9 @@ An enterprise web application for healthcare transfusion logistics, cold-chain i
 
 ## Account Roles
 
-Public registration always creates a Hospital Requester. Admins can create Staff, Laboratory Technician, and Hospital Requester accounts from **Profile & Settings → Provision an Account**. The same page has **Promote a Registered Requester**: an Admin can promote an existing requester by username or email. Promotion is restricted to the Admin's facility, audited, and takes effect for the promoted user after they sign in again. Admin accounts cannot be self-registered.
+The registration form offers Donor (`USER`), Blood Bank Staff, Hospital Requester, and Laboratory Technician. Donor accounts sign in immediately; the donor profile itself waits for facility Staff verification. Verified donors can request/cancel appointments and review their own donation history in **Donor Portal**. Staff review donor profiles and appointments in **Donor Queue**, record actual collections through Inventory, and those units enter quarantine for Lab clearance. Donors cannot create inventory units or access screening results. Staff, Hospital, and Lab role applications remain pending until an Admin approves them in **Profile & Settings → Review Role Applications**. Admin is never offered in registration: an Admin can promote an approved Donor from **Profile & Settings → Promote a Regular User**. Admins can still provision known staff accounts directly from **Provision an Account**.
+
+Existing databases automatically add the donor account link and donor workflow tables. `database-donor-portal.sql` is available for a manual migration; run it once after taking a backup. Existing donor records are not auto-linked to accounts; a staff member must verify identity and link the correct record from Donor Queue.
 
 Admins can also use **Profile & Settings → Reset a User Password** to generate a one-time temporary password for another account in their facility. The temporary password is displayed once, is not stored in the audit log, and must be replaced at the user's next sign-in before protected APIs are available. Give it to the user privately. Existing databases automatically add the `must_change_password` flag; `database-admin-password-reset.sql` is also provided for manual migrations.
 
@@ -82,6 +84,14 @@ For WAMP integration checks on Windows, run `tests/wamp-integration.ps1` from Po
 
 ## Demo Login
 
-- **Username / Email**: `staff@bloodbank.pk` or `staffdemo`
-- **Password**: `Staff@123`
-- **Role**: Blood bank staff (`STAFF`)
+Import [database-demo-accounts-reset.sql](database-demo-accounts-reset.sql) into the database configured in `api/db.php` to revoke old logins and create the local demo accounts below. Existing user rows and linked history remain in the database; old accounts are marked rejected and their credentials are replaced. The reset leaves exactly one approved Admin. The application does not recreate demo users at login.
+
+| Role | Username | Email | Password |
+|---|---|---|---|
+| Admin | `admin_demo` | `admin.demo@example.test` | `AdminDemo!2026` |
+| Blood bank staff | `staff_demo` | `staff.demo@example.test` | `StaffDemo!2026` |
+| Hospital requester | `hospital_demo` | `hospital.demo@example.test` | `HospitalDemo!2026` |
+| Lab technician | `lab_demo` | `lab.demo@example.test` | `LabDemo!2026` |
+| Donor (regular User) | `donor_demo` | `donor.demo@example.test` | `DonorDemo!2026` |
+
+These are classroom-only credentials for a local WAMP copy. Registration remains enabled: public sign-up creates a regular Donor account, while staff, hospital, and lab role applications require Admin approval; no one can register as Admin.

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Profile &amp; Settings — Smart Blood Bank</title>
-  <link rel="stylesheet" href="css/styles.css?v=3" />
+    <link rel="stylesheet" href="css/styles.css?v=4" />
   <style>
     /* ── Profile page layout ─────────────────────────────── */
     .profile-grid {
@@ -327,13 +327,20 @@
         </form>
       </div>
 
+      <div class="profile-card profile-card--wide" id="accountApprovalsSection" style="display:none;">
+        <h2>✅ Review Role Applications <span style="font-size:0.8rem;font-weight:400;color:#888;">(Admin Only)</span></h2>
+        <p class="threshold-hint">Review requests for Blood Bank Staff, Hospital Requesters, and Laboratory Technicians. Approved accounts can sign in with the role they requested. Admin cannot be requested here.</p>
+        <div id="accountApprovalsBanner" class="form-banner" role="status"></div>
+        <div id="accountApprovalsList" class="approval-list" aria-live="polite"><p>Loading applications…</p></div>
+      </div>
+
       <div class="profile-card profile-card--wide" id="promoteAdminSection" style="display:none;">
-        <h2>🔑 Promote a Registered Requester <span style="font-size:0.8rem;font-weight:400;color:#888;">(Admin Only)</span></h2>
-        <p class="threshold-hint">Promoting an account grants Admin access to your facility. The person must already have a Hospital Requester account and will need to sign in again.</p>
+        <h2>🔑 Promote a Regular User <span style="font-size:0.8rem;font-weight:400;color:#888;">(Admin Only)</span></h2>
+        <p class="threshold-hint">Promoting an approved regular User grants Admin access to your facility. Admin accounts cannot be self-registered.</p>
         <div id="promoteAdminBanner" class="form-banner" role="status"></div>
         <form id="promoteAdminForm">
           <div class="form-group">
-            <label for="promoteAdminIdentity">Requester username or email</label>
+            <label for="promoteAdminIdentity">Regular User username or email</label>
             <input id="promoteAdminIdentity" type="text" autocomplete="off" required />
           </div>
           <div class="btn-row"><button class="btn btn-primary" type="submit">Promote to Admin</button></div>
@@ -366,9 +373,9 @@
     <p>Smart Blood Bank Management System &nbsp;|&nbsp; &copy; <span data-year></span> Smart Blood Bank Inc. All rights reserved.</p>
   </footer>
 
-  <script src="js/validation.js?v=3"></script>
-  <script src="js/auth.js?v=4"></script>
-  <script src="js/profile.js?v=5"></script>
+  <script src="js/validation.js?v=4"></script>
+  <script src="js/auth.js?v=6"></script>
+  <script src="js/profile.js?v=6"></script>
   <script>
     // Populate avatar once session loads
     document.addEventListener('DOMContentLoaded', () => {
@@ -377,7 +384,7 @@
       const name = session.fullName || session.username || '?';
       document.getElementById('avatarInitials').textContent = name.trim()[0].toUpperCase();
       document.getElementById('avatarName').textContent = name;
-      document.getElementById('avatarRole').textContent = (session.role || '').replaceAll('_', ' ');
+      document.getElementById('avatarRole').textContent = session.role === 'USER' ? 'DONOR' : (session.role || '').replaceAll('_', ' ');
     });
     // Update avatar after profile loads
     document.getElementById('profileForm')?.addEventListener('submit', () => {

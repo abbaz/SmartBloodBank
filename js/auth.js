@@ -100,8 +100,8 @@ async function registerUser(payload) {
     throw new Error(data.message || `Registration failed (HTTP ${res.status}).`);
   }
 
-  setSession(data.user);
-  return data.user;
+  if (data.user) setSession(data.user);
+  return data;
 }
 
 /**
@@ -198,10 +198,11 @@ function renderChrome() {
       document.getElementById("logoutBtn")?.addEventListener("click", logoutUser);
       return;
     }
-    const roleLabel = (session.role || "USER").replaceAll("_", " ");
+    const roleLabel = session.role === 'USER' ? 'DONOR' : (session.role || "USER").replaceAll("_", " ");
     const isStaffOrAdmin = ["STAFF", "ADMIN"].includes(session.role);
     const isLab = session.role === "LAB_TECHNICIAN";
     const isHospital = session.role === "HOSPITAL_REQUESTER";
+    const isDonor = session.role === "USER";
 
     nav.innerHTML = `
       ${link("index.html", "home", "Home")}
@@ -209,6 +210,8 @@ function renderChrome() {
       ${isStaffOrAdmin || isHospital ? link("hospital.html", "hospital", isHospital ? "Hospital Requisitions" : "Hospital Orders") : ""}
       ${isStaffOrAdmin || isLab ? link("lab.html", "lab", "Lab Clearance") : ""}
       ${isStaffOrAdmin ? link("donors.html", "donors", "Donors") : ""}
+      ${isStaffOrAdmin ? link("donor-workflow.html", "donorworkflow", "Donor Queue") : ""}
+      ${isDonor ? link("donor-portal.html", "donorportal", "Donor Portal") : ""}
       ${isStaffOrAdmin || isLab ? link("inventory.html", "inventory", "Inventory") : ""}
       ${isStaffOrAdmin ? link("reports.html", "reports", "Analytics") : ""}
       ${isStaffOrAdmin ? link("audit.html", "audit", "Audit Trail") : ""}

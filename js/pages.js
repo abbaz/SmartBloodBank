@@ -11,13 +11,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("registerForm");
     const status = document.getElementById("formStatus");
     const submitBtn = form?.querySelector('button[type="submit"]');
+    const roleSelect = document.getElementById('role');
 
     const rules = {
       fullName: validateFullName,
       username: validateUsername,
       email: validateEmail,
       phone: validateRequiredPhone,
-      institutionId: validateInstitution,
+      institutionId: (value) => roleSelect.value === 'USER'
+        ? (/^[1-9]\d{0,9}$/.test(value.trim()) ? '' : 'Enter a valid numeric blood bank facility ID.')
+        : validateInstitution(value),
+      role: (value) => ['USER', 'STAFF', 'HOSPITAL_REQUESTER', 'LAB_TECHNICIAN'].includes(value) ? '' : 'Select an available account role.',
       bloodGroup: validateBloodGroup,
       password: validatePassword,
       confirmPassword: (value) =>
@@ -26,6 +30,28 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     bindLiveValidation(form, rules);
+
+    const institutionField = document.getElementById('institutionId').closest('.field');
+    const institutionInput = document.getElementById('institutionId');
+    const institutionLabel = document.getElementById('institutionLabel');
+    const institutionHelp = document.getElementById('institutionHelp');
+    const consentText = document.getElementById('registrationConsentText');
+    const updateRoleFields = () => {
+      const regularUser = roleSelect.value === 'USER';
+      institutionField.hidden = false;
+      institutionInput.required = true;
+      institutionLabel.textContent = regularUser ? 'Preferred blood bank facility ID' : 'Institution ID';
+      institutionInput.placeholder = regularUser ? '1' : 'e.g. FUSST-BB';
+      institutionInput.value = regularUser && !/^[1-9]\d{0,9}$/.test(institutionInput.value) ? '1' : institutionInput.value;
+      institutionHelp.textContent = regularUser
+        ? 'The current WAMP installation uses facility ID 1. Your donor profile will be verified by staff.'
+        : 'Use the exact ID assigned by your organization. Staff and Lab applications go to an Admin for that facility.';
+      consentText.textContent = regularUser
+        ? 'I consent to creating a donor profile and allow authorized blood bank staff to review it and contact me about donation appointments.'
+        : 'I understand that access is role-limited and that donor information must stay private.';
+    };
+    roleSelect.addEventListener('change', updateRoleFields);
+    updateRoleFields();
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -40,19 +66,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
-        await registerUser({
+        const registration = await registerUser({
           fullName: form.fullName.value,
           username: form.username.value,
           email: form.email.value,
           phone: form.phone.value,
           institutionId: form.institutionId.value,
-          role: "HOSPITAL_REQUESTER",
+          role: roleSelect.value,
           bloodGroup: form.bloodGroup.value,
+          donorConsent: roleSelect.value === 'USER' && form.terms.checked,
           password: form.password.value,
         });
 
-        showStatus(status, "success", "Account created successfully in database! Redirecting…");
-        setTimeout(() => (window.location.href = "index.html"), 1000);
+        if (registration.approval_status === 'PENDING') {
+          showStatus(status, "success", registration.message || "Your role application is waiting for Admin approval. You can sign in after it is approved.");
+          form.reset();
+          updateRoleFields();
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Create account"; }
+        } else {
+          showStatus(status, "success", registration.message || "Donor account created. Redirecting…");
+          setTimeout(() => (window.location.href = "index.html"), 1000);
+        }
       } catch (err) {
         showStatus(status, "error", err.message || "Failed to create account.");
         if (submitBtn) {
@@ -233,6 +267,10 @@ document.addEventListener("DOMContentLoaded", () => {
             <a class="btn btn-ghost" href="inventory.html">📦 Blood Inventory</a>
           `;
         }
+      } else if (session.role === "USER") {
+        if (kicker) kicker.textContent = "Donor Workspace";
+        if (lede) lede.textContent = "Manage your donor profile, request an appointment, and view your own donation history. Staff verifies donor profiles and confirms appointments.";
+        if (actions) actions.innerHTML = `<a class="btn btn-primary" href="donor-portal.html">Open Donor Portal</a><a class="btn btn-ghost" href="contact.html">Contact the blood bank</a>`;
       } else {
         if (kicker) kicker.textContent = "Blood Bank Staff Workspace";
         if (actions) {
@@ -248,7 +286,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Optional: Load live counts from MySQL database if on localhost
-    if (session && window.location.protocol !== "file:") {
+    if (session && session.role !== "USER" && window.location.protocol !== "file:") {
       fetch("api/stats.php")
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {

@@ -29,11 +29,9 @@
       <div class="side-copy">
         <p class="kicker">Institution Onboarding</p>
         <h1>Create a role-based account</h1>
-        <p class="lede">
-          Register with your professional credentials, assigned institution ID, and organizational role.
-        </p>
+        <p class="lede">Create a regular User account immediately, or apply for a Staff, Hospital, or Lab role. Those role applications need Admin approval before sign-in.</p>
         <p class="note">
-          Role-based access control enforces strict security boundaries between Administration, Blood Bank Staff, Laboratory Technicians, and Hospital Requesters.
+          Admin accounts cannot be requested here. An existing Admin may promote an approved regular User to Admin.
         </p>
       </div>
 
@@ -65,13 +63,24 @@
         </div>
         <div class="form-row">
           <div class="field">
-            <label for="institutionId">Institution ID <span class="req">*</span></label>
-            <input id="institutionId" name="institutionId" type="text" maxlength="12" placeholder="e.g. SBB-01" required />
+            <label for="institutionId"><span id="institutionLabel">Preferred blood bank facility ID</span> <span class="req">*</span></label>
+            <input id="institutionId" name="institutionId" type="text" maxlength="12" value="1" placeholder="1" required />
+            <small id="institutionHelp">The current WAMP installation uses facility ID 1. Staff and Lab applicants should enter their exact assigned institution ID.</small>
             <div class="error" data-error-for="institutionId"></div>
           </div>
-          <div class="field"><label>Account role</label><input type="text" value="Hospital requester" readonly /><small>Blood bank staff accounts are provisioned by an administrator.</small></div>
+          <div class="field">
+            <label for="role">Account role <span class="req">*</span></label>
+            <select id="role" name="role" required>
+              <option value="USER">Donor account</option>
+              <option value="STAFF">Blood bank staff (Admin approval required)</option>
+              <option value="HOSPITAL_REQUESTER">Hospital requester (Admin approval required)</option>
+              <option value="LAB_TECHNICIAN">Laboratory technician (Admin approval required)</option>
+            </select>
+            <small>Admin is never available for self-registration.</small>
+            <div class="error" data-error-for="role"></div>
+          </div>
         </div>
-        <div class="field">
+        <div class="field" id="registerBloodGroupField">
           <label for="bloodGroup">Blood group <span class="req">*</span></label>
           <select id="bloodGroup" name="bloodGroup" required>
             <option value="">Select group</option>
@@ -102,7 +111,7 @@
         <div class="field">
           <label class="checkbox" for="terms">
             <input id="terms" name="terms" type="checkbox" required />
-            <span>I understand that allocation is decision support only and that donor data must stay private.</span>
+            <span id="registrationConsentText">I consent to creating a donor profile and allow authorized blood bank staff to review and contact me about donation appointments.</span>
           </label>
           <div class="error" data-error-for="terms"></div>
         </div>
@@ -115,8 +124,8 @@
       <span>Smart Blood Bank Management System</span>
       <span>&copy; <span data-year></span> Smart Blood Bank Inc. All rights reserved.</span>
     </footer>
-    <script src="js/validation.js?v=2"></script>
-    <script src="js/auth.js?v=4"></script>
-    <script src="js/pages.js?v=3"></script>
+    <script src="js/validation.js?v=4"></script>
+    <script src="js/auth.js?v=6"></script>
+    <script src="js/pages.js?v=5"></script>
   </body>
 </html>

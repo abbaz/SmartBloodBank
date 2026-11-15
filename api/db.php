@@ -109,7 +109,7 @@ function getDb() {
 
 /** Reject writes unless every core mutable table can participate in transactions. */
 function requireTransactionalTables($conn) {
-    $required = ['users', 'contact_messages', 'donors', 'blood_units', 'blood_requests', 'transactions', 'audit_logs', 'settings'];
+    $required = ['users', 'contact_messages', 'donors', 'donor_profiles', 'donation_appointments', 'blood_units', 'blood_requests', 'transactions', 'audit_logs', 'settings'];
     $escaped = array_map(function ($name) use ($conn) {
         return "'" . $conn->real_escape_string($name) . "'";
     }, $required);
@@ -140,7 +140,6 @@ function requireTransactionalTables($conn) {
         exit;
     }
 }
-
 /**
  * Ensures essential tables exist in the connected database.
  */
@@ -153,9 +152,11 @@ function ensureTablesExist($conn) {
       `phone` varchar(20) DEFAULT NULL,
       `password_hash` varchar(255) NOT NULL,
       `must_change_password` tinyint(1) NOT NULL DEFAULT 0,
-      `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER') NOT NULL,
+      `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER','USER') NOT NULL,
       `blood_group` varchar(8) DEFAULT NULL,
       `institution_id` varchar(12) NOT NULL,
+      `institution_verified` tinyint(1) NOT NULL DEFAULT 0,
+      `approval_status` enum('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'APPROVED',
       `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (`user_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -165,11 +166,54 @@ function ensureTablesExist($conn) {
       `full_name` varchar(60) NOT NULL,
       `email` varchar(120) NOT NULL,
       `phone` varchar(20) DEFAULT NULL,
-      `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER') NOT NULL,
+      `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER','USER') NOT NULL,
       `subject` varchar(80) NOT NULL,
       `message` varchar(1000) NOT NULL,
       `sent_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (`message_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $donorUserColumn = @$conn->query("SHOW COLUMNS FROM `donors` LIKE 'user_id'");
+    if ($donorUserColumn && $donorUserColumn->num_rows === 0) {
+        @$conn->query("ALTER TABLE `donors` ADD COLUMN `user_id` int DEFAULT NULL AFTER `managed_by`");
+    }
+    $donorUserIndex = @$conn->query("SHOW INDEX FROM `donors` WHERE Key_name = 'uq_donors_user_id'");
+    if ($donorUserIndex && $donorUserIndex->num_rows === 0) {
+        @$conn->query("ALTER TABLE `donors` ADD UNIQUE KEY `uq_donors_user_id` (`user_id`)");
+    }
+
+    @$conn->query("CREATE TABLE IF NOT EXISTS `donor_profiles` (
+      `user_id` int NOT NULL,
+      `facility_id` int NOT NULL,
+      `blood_group` varchar(16) NOT NULL,
+      `profile_status` enum('PENDING','VERIFIED','REJECTED') NOT NULL DEFAULT 'PENDING',
+      `consent_at` datetime NOT NULL,
+      `donor_id` int DEFAULT NULL,
+      `reviewed_by` int DEFAULT NULL,
+      `reviewed_at` datetime DEFAULT NULL,
+      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (`user_id`),
+      UNIQUE KEY `uq_donor_profiles_donor_id` (`donor_id`),
+      KEY `idx_donor_profiles_facility_status` (`facility_id`, `profile_status`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    @$conn->query("CREATE TABLE IF NOT EXISTS `donation_appointments` (
+      `appointment_id` int NOT NULL AUTO_INCREMENT,
+      `donor_id` int NOT NULL,
+      `facility_id` int NOT NULL,
+      `requested_date` date NOT NULL,
+      `requested_time` time NOT NULL,
+      `scheduled_date` date DEFAULT NULL,
+      `scheduled_time` time DEFAULT NULL,
+      `status` enum('PENDING','CONFIRMED','DECLINED','CANCELLED','COMPLETED','NO_SHOW') NOT NULL DEFAULT 'PENDING',
+      `staff_note` varchar(300) DEFAULT NULL,
+      `reviewed_by` int DEFAULT NULL,
+      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (`appointment_id`),
+      KEY `idx_donation_appointments_facility_status` (`facility_id`, `status`, `requested_date`),
+      KEY `idx_donation_appointments_donor` (`donor_id`, `created_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
     $verifiedColumn = @$conn->query("SHOW COLUMNS FROM `users` LIKE 'institution_verified'");
@@ -180,6 +224,22 @@ function ensureTablesExist($conn) {
     $passwordResetColumn = @$conn->query("SHOW COLUMNS FROM `users` LIKE 'must_change_password'");
     if ($passwordResetColumn && $passwordResetColumn->num_rows === 0) {
         @$conn->query("ALTER TABLE `users` ADD COLUMN `must_change_password` tinyint(1) NOT NULL DEFAULT 0 AFTER `password_hash`");
+    }
+
+    // Existing accounts remain approved; new role applications use this status.
+    $userRoleColumn = @$conn->query("SHOW COLUMNS FROM `users` LIKE 'role'");
+    $userRoleType = $userRoleColumn ? (string)($userRoleColumn->fetch_assoc()['Type'] ?? '') : '';
+    if ($userRoleType !== '' && strpos($userRoleType, "'USER'") === false) {
+        @$conn->query("ALTER TABLE `users` MODIFY `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER','USER') NOT NULL");
+    }
+    $approvalColumn = @$conn->query("SHOW COLUMNS FROM `users` LIKE 'approval_status'");
+    if ($approvalColumn && $approvalColumn->num_rows === 0) {
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `approval_status` enum('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'APPROVED' AFTER `institution_verified`");
+    }
+    $contactRoleColumn = @$conn->query("SHOW COLUMNS FROM `contact_messages` LIKE 'role'");
+    $contactRoleType = $contactRoleColumn ? (string)($contactRoleColumn->fetch_assoc()['Type'] ?? '') : '';
+    if ($contactRoleType !== '' && strpos($contactRoleType, "'USER'") === false) {
+        @$conn->query("ALTER TABLE `contact_messages` MODIFY `role` enum('ADMIN','STAFF','LAB_TECHNICIAN','HOSPITAL_REQUESTER','USER') NOT NULL");
     }
 
     @$conn->query("CREATE TABLE IF NOT EXISTS `audit_logs` (
@@ -276,7 +336,7 @@ function requireAuth($allowedRoles = [], $allowPasswordChange = false) {
     $sessionUserId = (int)($_SESSION['user']['userId'] ?? $_SESSION['user']['user_id'] ?? 0);
     if ($sessionUserId > 0) {
         $authConn = getDb();
-        $resetCheck = $authConn->prepare('SELECT must_change_password FROM users WHERE user_id = ? LIMIT 1');
+        $resetCheck = $authConn->prepare('SELECT must_change_password, approval_status, role, institution_id, institution_verified FROM users WHERE user_id = ? LIMIT 1');
         if (!$resetCheck) {
             jsonResponse(['success' => false, 'message' => 'Could not verify account status.'], 503);
         }
@@ -287,6 +347,13 @@ function requireAuth($allowedRoles = [], $allowPasswordChange = false) {
         if (!$account) {
             jsonResponse(['success' => false, 'message' => 'This account is no longer available. Please sign in again.'], 401);
         }
+        if (($account['approval_status'] ?? 'APPROVED') !== 'APPROVED') {
+            unset($_SESSION['user']);
+            jsonResponse(['success' => false, 'message' => 'This account is not approved for access.'], 403);
+        }
+        $_SESSION['user']['role'] = $account['role'];
+        $_SESSION['user']['institutionId'] = $account['institution_id'];
+        $_SESSION['user']['institutionVerified'] = (bool)$account['institution_verified'];
         $_SESSION['user']['mustChangePassword'] = (bool)$account['must_change_password'];
     }
     if (!empty($allowedRoles)) {
@@ -317,6 +384,25 @@ function requireInventoryInstitutionId($user) {
         return (int)$raw;
     }
     jsonResponse(['success' => false, 'message' => 'Your account is not linked to a supported inventory facility.'], 403);
+}
+
+/** Validate donor-selected numeric facilities against this installation's known facilities. */
+function isKnownInventoryFacilityId($conn, $facilityId) {
+    $facilityId = (int)$facilityId;
+    if ($facilityId < 1) return false;
+    if ($facilityId === (int)defaultServingInstitutionId()) return true;
+    $facilityLabel = (string)$facilityId;
+    $stmt = $conn->prepare(
+        "SELECT user_id FROM users WHERE role IN ('ADMIN','STAFF','LAB_TECHNICIAN') " .
+        "AND (institution_id = ? OR (? = '1' AND UPPER(institution_id) = 'FUSST-BB')) LIMIT 1"
+    );
+    if (!$stmt) return false;
+    $defaultLabel = $facilityLabel;
+    $stmt->bind_param('ss', $facilityLabel, $defaultLabel);
+    $stmt->execute();
+    $known = $stmt->get_result()->num_rows > 0;
+    $stmt->close();
+    return $known;
 }
 
 /** Facility receiving new hospital requests in this single-bank installation. */
@@ -406,39 +492,5 @@ function logAudit($conn, $userId, $action, $entityId = null, $details = null) {
         return true;
     } catch (Throwable $t) {
         jsonResponse(['success' => false, 'message' => 'The change could not be recorded in the audit trail. No changes were saved.'], 500);
-    }
-}
-
-/**
- * Ensures demo staff account exists in MySQL users table.
- */
-function ensureDemoUserExists($conn) {
-    try {
-        $check = $conn->prepare("SELECT user_id FROM users WHERE email = ? OR username = ? LIMIT 1");
-        if (!$check) return;
-        $demoEmail = 'staff@bloodbank.pk';
-        $demoUser = 'staffdemo';
-        $check->bind_param("ss", $demoEmail, $demoUser);
-        $check->execute();
-        $res = $check->get_result();
-        if ($res && $res->num_rows === 0) {
-            $check->close();
-            $insert = $conn->prepare("INSERT INTO users (username, full_name, email, phone, password_hash, role, blood_group, institution_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            if ($insert) {
-                $fullName = 'Demo Staff';
-                $phone = '03001234567';
-                $pwdHash = password_hash('Staff@123', PASSWORD_BCRYPT);
-                $role = 'STAFF';
-                $bloodGroup = 'O+';
-                $institutionId = 'FUSST-BB';
-                $insert->bind_param("ssssssss", $demoUser, $fullName, $demoEmail, $phone, $pwdHash, $role, $bloodGroup, $institutionId);
-                $insert->execute();
-                $insert->close();
-            }
-        } else {
-            $check->close();
-        }
-    } catch (Throwable $t) {
-        // Ignore if schema mismatch
     }
 }

@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/db.php';
 
-$user = requireAuth(['STAFF', 'ADMIN', 'LAB_TECHNICIAN', 'HOSPITAL_REQUESTER'], true);
+$user = requireAuth(['USER', 'STAFF', 'ADMIN', 'LAB_TECHNICIAN', 'HOSPITAL_REQUESTER'], true);
 $conn = getDb();
 
 $action = '';

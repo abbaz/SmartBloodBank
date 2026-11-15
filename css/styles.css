@@ -1127,6 +1127,25 @@ html[data-theme="dark"] .form-banner--success { background: #20382f; color: #9be
 html[data-theme="dark"] .form-banner--error { background: #482a2a; color: #ffaaa2; border-color: #70403e; }
 html[data-theme="dark"] .form-banner--info { background: #202f43; color: #a9c8ff; border-color: #385273; }
 
+.approval-list { display: grid; gap: 12px; }
+.approval-item { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface, #fffaf7); }
+.approval-item__details p { margin: 6px 0 2px; color: var(--muted); overflow-wrap: anywhere; }
+.approval-item__details small { color: var(--muted); }
+.approval-item__actions { display: flex; gap: 8px; flex: 0 0 auto; }
+html[data-theme="dark"] .approval-item { background: var(--paper); }
+@media (max-width: 680px) { .approval-item { align-items: flex-start; flex-direction: column; } }
+.portal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+html [hidden] { display: none !important; }
+.portal-form { display: grid; gap: 14px; }
+.portal-form .form-group { display: grid; gap: 6px; }
+.donor-review-item { align-items: flex-start; }
+.workflow-field { display: grid; gap: 5px; min-width: 180px; color: var(--muted); font-size: 0.88rem; }
+.workflow-field input { max-width: 240px; }
+.workflow-actions { display: grid; gap: 7px; min-width: 140px; }
+.collection-entry { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.table-wrap td input[type="date"], .table-wrap td input[type="time"], .table-wrap td input[type="text"] { min-width: 130px; }
+@media (max-width: 760px) { .portal-grid { grid-template-columns: 1fr; } }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: 0.01ms !important; }
